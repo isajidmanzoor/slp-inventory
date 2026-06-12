@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
 const WOO_BASE = 'https://smartlivingpakistan.com/wp-json/wc/v3'
-const WOO_KEY  = process.env.WOO_CONSUMER_KEY  || ''
-const WOO_SEC  = process.env.WOO_CONSUMER_SECRET || ''
+const WOO_KEY = process.env.WOO_CONSUMER_KEY || ''
+const WOO_SEC = process.env.WOO_CONSUMER_SECRET || ''
 
-// Map WooCommerce category slugs / names → our category names
 const CAT_MAP: Record<string, string> = {
   'lights': 'Lights', 'lighting': 'Lights',
   'switch-plates': 'Switch Plates', 'switch plates': 'Switch Plates', 'switchboards': 'Switch Plates',
@@ -55,25 +54,24 @@ async function fetchAllWooProducts(): Promise<any[]> {
   return all
 }
 
-export async function POST(req: NextRequest) {
-  // Require auth
+export async function GET(req: NextRequest) {
+  // Verify cron secret from Vercel
   const authHeader = req.headers.get('authorization')
-  const syncSecret = process.env.SYNC_SECRET || ''
-  if (syncSecret && authHeader !== `Bearer ${syncSecret}`) {
+  const cronSecret = process.env.CRON_SECRET || ''
+
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  let added = 0, updated = 0
-  let status = 'ok', message = ''
+  if (!WOO_KEY || !WOO_SEC) {
+    return NextResponse.json(
+      { ok: false, error: 'WooCommerce credentials not configured' },
+      { status: 200 }
+    )
+  }
 
   try {
-    // If no WooCommerce credentials, return graceful message
-    if (!WOO_KEY || !WOO_SEC) {
-      return NextResponse.json({
-        ok: false,
-        error: 'WooCommerce API keys not configured. Add WOO_CONSUMER_KEY and WOO_CONSUMER_SECRET to your environment variables.',
-      }, { status: 200 })
-    }
+    let added = 0, updated = 0
 
     const wooProducts = await fetchAllWooProducts()
 
@@ -83,7 +81,7 @@ export async function POST(req: NextRequest) {
 
       const salePrice = parseFloat(wp.sale_price || wp.price || '0') || 0
       const origPrice = parseFloat(wp.regular_price || '0') || 0
-      const stock     = wp.stock_quantity ?? (wp.in_stock ? 10 : 0)
+      const stock = wp.stock_quantity ?? (wp.in_stock ? 10 : 0)
       
       // Extract image URL more robustly
       let imageUrl = null
@@ -94,10 +92,9 @@ export async function POST(req: NextRequest) {
         }
       }
       
-      const category  = mapCategory(wp.categories || [])
-      const subCat    = wp.categories?.[1]?.name || ''
+      const category = mapCategory(wp.categories || [])
+      const subCat = wp.categories?.[1]?.name || ''
 
-      // Check if exists by woo_id or name
       const { data: existing } = await supabase
         .from('products')
         .select('id, name, stock')
@@ -106,44 +103,57 @@ export async function POST(req: NextRequest) {
 
       if (existing) {
         await supabase.from('products').update({
-          name, category, sub_category: subCat,
-          sale_price: salePrice, original_price: origPrice,
-          stock, image_url: imageUrl,
-          woo_id: wp.id, last_synced_at: new Date().toISOString(),
+          name,
+          category,
+          sub_category: subCat,
+          sale_price: salePrice,
+          original_price: origPrice,
+          stock,
+          image_url: imageUrl,
+          woo_id: wp.id,
+          last_synced_at: new Date().toISOString(),
         }).eq('id', existing.id)
         updated++
       } else {
         await supabase.from('products').insert({
-          name, category, sub_category: subCat,
-          sale_price: salePrice, original_price: origPrice,
-          stock: stock || 0, notes: '',
+          name,
+          category,
+          sub_category: subCat,
+          sale_price: salePrice,
+          original_price: origPrice,
+          stock: stock || 0,
+          notes: '',
           image_url: imageUrl,
-          woo_id: wp.id, last_synced_at: new Date().toISOString(),
+          woo_id: wp.id,
+          last_synced_at: new Date().toISOString(),
         })
         added++
       }
     }
 
-    // Log sync
     await supabase.from('sync_log').insert({
-      added, updated, total_found: wooProducts.length, status: 'ok',
+      added,
+      updated,
+      total_found: wooProducts.length,
+      status: 'ok',
     })
 
-    return NextResponse.json({ ok: true, added, updated, total: wooProducts.length })
+    return NextResponse.json({
+      ok: true,
+      added,
+      updated,
+      total: wooProducts.length,
+      timestamp: new Date().toISOString(),
+    })
   } catch (err: any) {
-    status = 'error'
-    message = err?.message || 'Unknown error'
-    await supabase.from('sync_log').insert({ added, updated, total_found: 0, status, message })
+    const message = err?.message || 'Unknown error'
+    await supabase.from('sync_log').insert({
+      added: 0,
+      updated: 0,
+      total_found: 0,
+      status: 'error',
+      message,
+    })
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
-}
-
-// GET — last sync info
-export async function GET() {
-  const { data } = await supabase
-    .from('sync_log')
-    .select('*')
-    .order('synced_at', { ascending: false })
-    .limit(5)
-  return NextResponse.json(data ?? [])
 }

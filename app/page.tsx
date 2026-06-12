@@ -44,8 +44,10 @@ export default function InventoryPage() {
   const [saving,     setSaving]     = useState(false)
   const [syncing,    setSyncing]    = useState(false)
   const [syncResult, setSyncResult] = useState<string|null>(null)
+  const [hasAutoSynced, setHasAutoSynced] = useState(false)
   const [view,       setView]       = useState<'grid'|'list'>('grid')
   const [activeCat,  setActiveCat]  = useState('All')
+  const [activeStat, setActiveStat] = useState<'all'|'instock'|'value'|'lowstock'>('all')
   const [query,      setQuery]      = useState('')
   const [sortBy,     setSortBy]     = useState('default')
   const [page,       setPage]       = useState(1)
@@ -86,6 +88,18 @@ export default function InventoryPage() {
 
   useEffect(() => { if (!authLoading) fetchProducts() }, [authLoading, fetchProducts])
 
+  useEffect(() => {
+    if (authLoading || loading || hasAutoSynced) return
+    if (products.length === 0) {
+      setHasAutoSynced(true)
+      if (process.env.NEXT_PUBLIC_SYNC_SECRET) {
+        handleSync()
+      } else {
+        setSyncResult('🔧 Configure NEXT_PUBLIC_SYNC_SECRET + WooCommerce keys for auto-sync')
+      }
+    }
+  }, [authLoading, loading, products.length, hasAutoSynced])
+
   // Real-time
   useEffect(() => {
     if (authLoading) return
@@ -102,13 +116,22 @@ export default function InventoryPage() {
   // ── WooCommerce sync ──────────────────────────────
   async function handleSync() {
     setSyncing(true); setSyncResult(null)
+    const syncSecret = process.env.NEXT_PUBLIC_SYNC_SECRET || ''
+    if (!syncSecret) {
+      setSyncResult('⚠️ NEXT_PUBLIC_SYNC_SECRET is not configured. Trying sync without client-side auth...')
+    }
+
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+      if (syncSecret) {
+        headers.Authorization = `Bearer ${syncSecret}`
+      }
+
       const res = await fetch('/api/sync', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SYNC_SECRET || ''}`,
-        },
+        headers,
       })
       const data = await res.json()
       if (data.ok) {
@@ -116,6 +139,8 @@ export default function InventoryPage() {
         await fetchProducts()
       } else if (data.error?.includes('API keys not configured')) {
         setSyncResult('⚙️ Add WOO_CONSUMER_KEY & WOO_CONSUMER_SECRET in Vercel env vars to enable sync')
+      } else if (data.error?.includes('Unauthorized')) {
+        setSyncResult('❌ Sync failed: authorization failed. Ensure SYNC_SECRET and NEXT_PUBLIC_SYNC_SECRET match in Vercel env vars.')
       } else {
         setSyncResult('❌ Sync failed: ' + (data.error || 'Unknown error'))
       }
@@ -143,15 +168,28 @@ export default function InventoryPage() {
       const inCat = activeCat === 'All' || p.category === activeCat
       const inQ   = !q || [p.name, p.category, p.sub_category, p.notes]
                         .some(x => x?.toLowerCase().includes(q))
-      return inCat && inQ
+      
+      // Apply stat filters
+      let inStat = true
+      if (activeStat === 'instock') inStat = p.stock > 0
+      else if (activeStat === 'value') inStat = p.sale_price * p.stock > 0
+      else if (activeStat === 'lowstock') inStat = p.stock === 0 || (p.stock > 0 && p.stock <= LOW)
+      
+      return inCat && inQ && inStat
     })
-    switch (sortBy) {
-      case 'az': r.sort((a,b) => a.name.localeCompare(b.name)); break
-      case 'za': r.sort((a,b) => b.name.localeCompare(a.name)); break
-      case 'pa': r.sort((a,b) => a.sale_price - b.sale_price); break
-      case 'pd': r.sort((a,b) => b.sale_price - a.sale_price); break
-      case 'dc': r.sort((a,b) => disc(b) - disc(a)); break
-      case 'ls': r.sort((a,b) => a.stock - b.stock); break
+    
+    // Auto-sort when stock value is selected
+    if (activeStat === 'value') {
+      r.sort((a,b) => (b.sale_price * b.stock) - (a.sale_price * a.stock))
+    } else {
+      switch (sortBy) {
+        case 'az': r.sort((a,b) => a.name.localeCompare(b.name)); break
+        case 'za': r.sort((a,b) => b.name.localeCompare(a.name)); break
+        case 'pa': r.sort((a,b) => a.sale_price - b.sale_price); break
+        case 'pd': r.sort((a,b) => b.sale_price - a.sale_price); break
+        case 'dc': r.sort((a,b) => disc(b) - disc(a)); break
+        case 'ls': r.sort((a,b) => a.stock - b.stock); break
+      }
     }
     return r
   }
@@ -218,18 +256,21 @@ export default function InventoryPage() {
     }
     try {
       if (modal === 'edit' && editProd) {
-        const res = await fetch(`/api/products/${editProd.id}`, {
-          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        })
-        if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Save failed') }
+        const { error } = await supabase
+          .from('products')
+          .update(payload)
+          .eq('id', editProd.id)
+          .select()
+          .single()
+        if (error) throw new Error(error.message)
         showToast('✅ Product updated')
       } else {
-        const res = await fetch('/api/products', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        })
-        if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Save failed') }
+        const { error } = await supabase
+          .from('products')
+          .insert([payload])
+          .select()
+          .single()
+        if (error) throw new Error(error.message)
         showToast('✅ Product added')
       }
       closeModal(); await fetchProducts()
@@ -240,11 +281,16 @@ export default function InventoryPage() {
   async function handleDelete() {
     if (!confirmId) return
     try {
-      const res = await fetch(`/api/products/${confirmId}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error()
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', confirmId)
+      if (error) throw new Error(error.message)
       showToast('🗑 Product deleted')
       setConfirmId(null); await fetchProducts()
-    } catch { showToast('Delete failed', 'err') }
+    } catch (e: any) {
+      showToast(e.message || 'Delete failed', 'err')
+    }
   }
 
   function StockBadge({ stock }: { stock: number }) {
@@ -271,13 +317,21 @@ export default function InventoryPage() {
   function ProdImg({ p, h }: { p: Product; h: number }) {
     const [err, setErr] = useState(false)
     const m = cm(p.category)
-    if (!p.image_url || err) return (
+    
+    // Only show image if URL exists and is valid
+    const hasValidUrl = p.image_url && p.image_url.trim().length > 0 && p.image_url.startsWith('http')
+    
+    if (!hasValidUrl || err) return (
       <div style={{ height:h, background:m.bg, display:'flex', alignItems:'center',
         justifyContent:'center', fontSize: h > 80 ? 42 : 22 }}>{m.emoji}</div>
     )
-    return <img src={p.image_url} alt={p.name} loading="lazy"
+    return <img 
+      src={p.image_url || ''} 
+      alt={p.name} 
+      loading="lazy"
       onError={() => setErr(true)}
-      style={{ width:'100%', height:h, objectFit:'cover', display:'block' }} />
+      style={{ width:'100%', height:h, objectFit:'cover', display:'block' }} 
+    />
   }
 
   if (authLoading) return (
@@ -526,23 +580,33 @@ export default function InventoryPage() {
         {/* STATS */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-4">
           {[
-            { icon:<Package size={18}/>, label:'Products',      val: products.length,   bg:'#E8F1FB', color:'#0C447C' },
-            { icon:<Tag size={18}/>,     label:'Units in Stock', val: fmt(totalStock),  bg:'#E3F5EE', color:'#085041' },
-            { icon:<DollarSign size={18}/>, label:'Stock Value', val: '₨'+valStr,       bg:'#FDF0DC', color:'#633806' },
-            { icon: lowCount+outCount > 0 ? <AlertTriangle size={18}/> : <CheckCircle2 size={18}/>,
+            { id: 'all' as const, icon:<Package size={18}/>, label:'Products',      val: products.length,   bg:'#E8F1FB', color:'#0C447C' },
+            { id: 'instock' as const, icon:<Tag size={18}/>,     label:'Units in Stock', val: fmt(totalStock),  bg:'#E3F5EE', color:'#085041' },
+            { id: 'value' as const, icon:<DollarSign size={18}/>, label:'Stock Value', val: '₨'+valStr,       bg:'#FDF0DC', color:'#633806' },
+            { id: 'lowstock' as const, icon: lowCount+outCount > 0 ? <AlertTriangle size={18}/> : <CheckCircle2 size={18}/>,
               label:'Low / Out of Stock', val: lowCount+outCount,
               bg: lowCount+outCount > 0 ? '#FDEAEA' : '#E3F5EE',
               color: lowCount+outCount > 0 ? '#9B2B2B' : '#085041' },
-          ].map((s,i) => (
-            <div key={i} className="bg-white rounded-xl border flex items-center gap-3 px-3 py-3"
-              style={{ borderColor:'#E4E2DC' }}>
+          ].map((s) => (
+            <button
+              key={s.id}
+              onClick={() => {
+                setActiveStat(s.id)
+                setPage(1)
+              }}
+              className="bg-white rounded-xl border flex items-center gap-3 px-3 py-3 transition-all text-left hover:shadow-md"
+              style={{
+                borderColor: activeStat === s.id ? s.color : '#E4E2DC',
+                borderWidth: activeStat === s.id ? 2 : 1,
+                background: activeStat === s.id ? s.bg : 'white',
+              }}>
               <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                 style={{ background:s.bg, color:s.color }}>{s.icon}</div>
               <div>
                 <div className="text-lg font-bold leading-none" style={{ color:'#1C1B19' }}>{s.val}</div>
                 <div className="text-[11px] mt-0.5" style={{ color:'#9C9B97' }}>{s.label}</div>
               </div>
-            </div>
+            </button>
           ))}
         </div>
 

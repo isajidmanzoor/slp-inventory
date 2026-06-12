@@ -36,8 +36,21 @@ export default function AuthPage() {
   // Check if already logged in
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) router.replace('/')
+      if (data.session) {
+        // Check if this is a recovery session (from password reset link)
+        if (data.session.user?.recovery_sent_at) {
+          setMode('reset-password')
+          return
+        }
+        router.replace('/')
+      }
     })
+    
+    // Also check URL hash for recovery token
+    const hash = window.location.hash
+    if (hash.includes('type=recovery')) {
+      setMode('reset-password')
+    }
   }, [router])
 
   function showToast(msg: string, type: 'ok'|'err' = 'ok') {
@@ -167,6 +180,26 @@ export default function AuthPage() {
     setLoading(false)
   }
 
+  // ── RESET PASSWORD ────────────────────────────────
+  async function handleResetPassword() {
+    if (!newPw) { showToast('Please enter a new password', 'err'); return }
+    if (newPw.length < 8) { showToast('Password must be at least 8 characters', 'err'); return }
+    
+    setLoading(true)
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPw })
+      if (error) throw error
+      showToast('✅ Password reset successfully!')
+      setTimeout(() => {
+        setNewPw('')
+        setMode('login')
+      }, 1500)
+    } catch (e: any) {
+      showToast(friendlyError(e.message), 'err')
+    }
+    setLoading(false)
+  }
+
   // ── OTP INPUT HANDLER ─────────────────────────────
   function handleOtpKey(i: number, val: string) {
     if (!/^\d*$/.test(val)) return
@@ -227,6 +260,7 @@ export default function AuthPage() {
   const isSignup   = mode === 'signup'
   const isForgot   = mode === 'forgot'
   const isOtp      = mode === 'otp-verify'
+  const isReset    = mode === 'reset-password'
 
   return (
     <div style={{
@@ -269,6 +303,7 @@ export default function AuthPage() {
             {isSignup && 'Create new account'}
             {isForgot && 'Reset your password'}
             {isOtp    && 'Enter OTP code'}
+            {isReset  && 'Set new password'}
           </div>
         </div>
 
@@ -502,6 +537,36 @@ export default function AuthPage() {
                 background:'none', border:'none', cursor: countdown > 0 ? 'default' : 'pointer',
               }}>
                 {countdown > 0 ? `Resend in ${countdown}s` : 'Resend OTP'}
+              </button>
+            </div>
+          )}
+
+          {/* ── RESET PASSWORD ── */}
+          {isReset && (
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              <p style={{ fontSize:14, color:'#6B6A66', textAlign:'center', lineHeight:1.5 }}>
+                Enter your new password. Make sure it's at least 8 characters long.
+              </p>
+
+              <div style={{ position:'relative' }}>
+                <input type={showNewPw?'text':'password'} placeholder="New password (min 8 chars)" value={newPw}
+                  onChange={e => setNewPw(e.target.value)}
+                  onKeyDown={e => e.key==='Enter' && handleResetPassword()}
+                  className={inp} style={{ borderColor:'#E4E2DC', paddingRight:44 }}/>
+                <button onClick={() => setShowNewPw(p=>!p)} style={{
+                  position:'absolute', right:14, top:'50%', transform:'translateY(-50%)',
+                  background:'none', border:'none', cursor:'pointer', color:'#9C9B97',
+                }}>{showNewPw ? <EyeOff size={16}/> : <Eye size={16}/>}</button>
+              </div>
+
+              <button onClick={handleResetPassword} disabled={loading || !newPw || newPw.length < 8} style={{
+                width:'100%', height:46, borderRadius:14, border:'none', cursor:'pointer',
+                background: (loading || !newPw || newPw.length < 8) ? '#7FA8D0' : SLP_BLUE,
+                color:'white', fontWeight:700, fontSize:15,
+                display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+              }}>
+                {loading && <RefreshCw size={16} className="animate-spin"/>}
+                {loading ? 'Resetting…' : 'Reset Password'}
               </button>
             </div>
           )}

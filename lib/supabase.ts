@@ -1,9 +1,24 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseKey)
+const missingSupabaseEnv = !supabaseUrl || !supabaseKey
+const missingSupabaseMessage =
+  'Missing Supabase environment variables: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.'
+
+function createMissingSupabaseClient(): SupabaseClient {
+  const throwError = () => { throw new Error(missingSupabaseMessage) }
+  const proxy = new Proxy(throwError, {
+    get() { return proxy },
+    apply() { return throwError() },
+  })
+  return proxy as unknown as SupabaseClient
+}
+
+export const supabase = missingSupabaseEnv
+  ? createMissingSupabaseClient()
+  : createClient(supabaseUrl, supabaseKey)
 
 export type Product = {
   id: number
