@@ -14,6 +14,9 @@ CREATE TABLE IF NOT EXISTS profiles (
   created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS low_stock_threshold INTEGER NOT NULL DEFAULT 5;
+
 -- Auto-create profile on sign-up
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$

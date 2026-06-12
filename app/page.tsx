@@ -112,7 +112,7 @@ export default function InventoryPage() {
         .single()
 
       if (error) {
-        const missingThreshold = String(error.message || '').includes('low_stock_threshold')
+        const missingThreshold = /low_stock_threshold|column .* does not exist|invalid column/i.test(String(error.message || ''))
         if (missingThreshold) {
           setProfileSchemaReady(false)
           const { data: fallbackData } = await supabase
@@ -245,7 +245,7 @@ export default function InventoryPage() {
         .from('profiles')
         .upsert(payload, { onConflict: 'id' })
       if (error) {
-        const missingThreshold = String(error.message || '').includes('low_stock_threshold')
+        const missingThreshold = /low_stock_threshold|column .* does not exist|invalid column/i.test(String(error.message || ''))
         if (missingThreshold) {
           setProfileSchemaReady(false)
           const { error: fallbackError } = await supabase
@@ -848,22 +848,20 @@ export default function InventoryPage() {
                         style={{ background:'#1A5FA8' }}>-{d}%</div>
                     )}
                     {(p.stock === 0 || p.stock <= lowStockThreshold) && (
-                      <div className="absolute top-2 left-2 w-8 h-8 rounded-full bg-white/90 border flex items-center justify-center"
-                        style={{ borderColor:'#F5C0C0', color:'#9B2B2B' }} title="Low stock alert">
+                      <button onClick={() => openEdit(p)}
+                        type="button"
+                        className="absolute top-2 left-2 w-8 h-8 rounded-full bg-white/90 border flex items-center justify-center"
+                        style={{ borderColor:'#F5C0C0', color:'#9B2B2B' }}
+                        title="Low stock alert — click to edit"
+                        aria-label="Edit low-stock product">
                         <Bell size={14}/>
-                      </div>
+                      </button>
                     )}
                     {(p as any).woo_id && (
                       <div className="absolute bottom-2 right-2 w-5 h-5 rounded-full flex items-center justify-center"
                         title="Synced from WooCommerce"
                         style={{ background:'rgba(8,80,65,0.85)' }}>
                         <Wifi size={10} color="white"/>
-                      </div>
-                    )}
-                    {(p.stock === 0 || p.stock <= lowStockThreshold) && (
-                      <div className="absolute top-2 left-2 w-8 h-8 rounded-full bg-white/90 border flex items-center justify-center"
-                        style={{ borderColor:'#F5C0C0', color:'#9B2B2B' }} title="Low stock alert">
-                        <Bell size={14}/>
                       </div>
                     )}
                     <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
