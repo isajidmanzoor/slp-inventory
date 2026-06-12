@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Force readable text in all inputs regardless of theme */
+input, input[type="text"], input[type="number"],
+input[type="url"], input[type="search"],
+select, textarea {
+  color: #1C1B19 !important;
+  background-color: #ffffff !important;
+  -webkit-text-fill-color: #1C1B19 !important;
+  opacity: 1 !important;
+}
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #1C1B19 !important;
+  -webkit-box-shadow: 0 0 0 100px #ffffff inset !important;
+}
+
+/* Smooth scrollbar */
+html { scroll-behavior: smooth; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #F5F4F0; }
+::-webkit-scrollbar-thumb { background: #C8C6C0; border-radius: 3px; }
