@@ -28,8 +28,22 @@
    - Phone: Toggle ON → add Twilio credentials for real SMS OTP
    - (Without Twilio, use Email login only — OTP tab still works via email link)
 
+### Enable Password Reset Emails ⚠️ IMPORTANT
+8. **Authentication → Email Templates**
+   - Click **Confirm signup** → make sure it's enabled
+   - Click **Reset Password** → make sure it's enabled
+   - Click **Email Provider** → Must have one configured:
+     - Option A: **Supabase built-in** (free, includes daily limit)
+     - Option B: **SendGrid** (recommended for production, higher limits)
+     - Option C: **PostMark** or **AWS SES**
+   - Without an email provider configured, password reset emails will NOT send
+   - Once configured, set the **Redirect URL** in **Authentication → URL Configuration**:
+     - For local: `http://localhost:3000`
+     - For production: `https://your-app-name.vercel.app`
+   - This ensures reset links point to YOUR app, not Supabase
+
 ### Enable Realtime
-8. **Database → Replication** → toggle `products` table ON
+9. **Database → Replication** → toggle `products` table ON
 
 ---
 
