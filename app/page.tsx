@@ -51,6 +51,10 @@ export default function InventoryPage() {
   const [query,      setQuery]      = useState('')
   const [sortBy,     setSortBy]     = useState('default')
   const [page,       setPage]       = useState(1)
+  const [lowStockThreshold, setLowStockThreshold] = useState<number>(LOW)
+  const [profileLoading, setProfileLoading] = useState(true)
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [profileEmail, setProfileEmail] = useState('')
   const [modal,      setModal]      = useState<'add'|'edit'|null>(null)
   const [editProd,   setEditProd]   = useState<Product|null>(null)
   const [form,       setForm]       = useState({ ...EMPTY })
@@ -78,15 +82,46 @@ export default function InventoryPage() {
   // ── Fetch ─────────────────────────────────────────
   const fetchProducts = useCallback(async () => {
     setLoading(true)
+    let items: Product[] = []
     try {
       const res = await fetch('/api/products')
       const data = await res.json()
-      setProducts(Array.isArray(data) ? data : [])
-    } catch { showToast('Failed to load products', 'err') }
-    setLoading(false)
+      items = Array.isArray(data) ? data : []
+      setProducts(items)
+    } catch {
+      showToast('Failed to load products', 'err')
+    } finally {
+      setLoading(false)
+    }
+    return items
   }, [])
 
   useEffect(() => { if (!authLoading) fetchProducts() }, [authLoading, fetchProducts])
+
+  useEffect(() => {
+    if (!authLoading) fetchProfile()
+  }, [authLoading])
+
+  async function fetchProfile() {
+    setProfileLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('low_stock_threshold,email')
+        .single()
+      if (!error && data) {
+        if (typeof data.low_stock_threshold === 'number') {
+          setLowStockThreshold(data.low_stock_threshold)
+        }
+        if (typeof data.email === 'string') {
+          setProfileEmail(data.email)
+        }
+      }
+    } catch {
+      // ignore profile load failure; use defaults
+    }
+    setProfileLoading(false)
+  }
 
   useEffect(() => {
     if (authLoading || loading || hasAutoSynced) return
@@ -136,7 +171,8 @@ export default function InventoryPage() {
       const data = await res.json()
       if (data.ok) {
         setSyncResult(`✅ Synced! +${data.added} new, ${data.updated} updated (${data.total} total)`)
-        await fetchProducts()
+        const latestProducts = await fetchProducts()
+        await sendLowStockEmail(latestProducts)
       } else if (data.error?.includes('API keys not configured')) {
         setSyncResult('⚙️ Add WOO_CONSUMER_KEY & WOO_CONSUMER_SECRET in Vercel env vars to enable sync')
       } else if (data.error?.includes('Unauthorized')) {
@@ -161,6 +197,45 @@ export default function InventoryPage() {
     setToast({ msg, type }); setTimeout(() => setToast(null), 2800)
   }
 
+  async function sendLowStockEmail(products: Product[]) {
+    if (!profileEmail) return
+    const lowProducts = products.filter(p => p.stock > 0 && p.stock <= lowStockThreshold)
+    if (lowProducts.length === 0) return
+
+    try {
+      await fetch('/api/notify-low-stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: profileEmail, threshold: lowStockThreshold, products: lowProducts }),
+      })
+    } catch {
+      // ignore notification failure; only show data in app
+    }
+  }
+
+  async function handleSaveProfile() {
+    if (!user?.id) return
+    if (!profileEmail.trim()) {
+      showToast('Enter an email to receive alerts', 'err')
+      return
+    }
+    setProfileSaving(true)
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          email: profileEmail.trim(),
+          low_stock_threshold: lowStockThreshold,
+        }, { onConflict: 'id' })
+      if (error) throw new Error(error.message)
+      showToast('✅ Alert settings saved')
+    } catch (e: any) {
+      showToast(e.message || 'Save failed', 'err')
+    }
+    setProfileSaving(false)
+  }
+
   // ── Filter/sort/paginate ──────────────────────────
   const filtered = () => {
     const q = query.toLowerCase()
@@ -173,7 +248,7 @@ export default function InventoryPage() {
       let inStat = true
       if (activeStat === 'instock') inStat = p.stock > 0
       else if (activeStat === 'value') inStat = p.sale_price * p.stock > 0
-      else if (activeStat === 'lowstock') inStat = p.stock === 0 || (p.stock > 0 && p.stock <= LOW)
+      else if (activeStat === 'lowstock') inStat = p.stock === 0 || (p.stock > 0 && p.stock <= lowStockThreshold)
       
       return inCat && inQ && inStat
     })
@@ -201,7 +276,7 @@ export default function InventoryPage() {
 
   const totalStock = products.reduce((s,p) => s + p.stock, 0)
   const stockValue = products.reduce((s,p) => s + p.sale_price * p.stock, 0)
-  const lowCount   = products.filter(p => p.stock > 0 && p.stock <= LOW).length
+  const lowCount   = products.filter(p => p.stock > 0 && p.stock <= lowStockThreshold).length
   const outCount   = products.filter(p => p.stock === 0).length
   const valStr     = stockValue >= 1_000_000 ? (stockValue/1_000_000).toFixed(1)+'M'
                    : stockValue >= 1000       ? (stockValue/1000).toFixed(0)+'K'
@@ -273,24 +348,29 @@ export default function InventoryPage() {
         if (error) throw new Error(error.message)
         showToast('✅ Product added')
       }
-      closeModal(); await fetchProducts()
+      closeModal()
+      const latestProducts = await fetchProducts()
+      await sendLowStockEmail(latestProducts)
     } catch (e: any) { showToast(e.message || 'Save failed', 'err') }
     setSaving(false)
   }
 
   async function handleDelete() {
     if (!confirmId) return
+    setSaving(true)
     try {
       const { error } = await supabase
         .from('products')
         .delete()
         .eq('id', confirmId)
       if (error) throw new Error(error.message)
-      showToast('🗑 Product deleted')
-      setConfirmId(null); await fetchProducts()
+      showToast('✅ Product deleted')
+      setConfirmId(null)
+      await fetchProducts()
     } catch (e: any) {
       showToast(e.message || 'Delete failed', 'err')
     }
+    setSaving(false)
   }
 
   function StockBadge({ stock }: { stock: number }) {
@@ -300,7 +380,7 @@ export default function InventoryPage() {
         <PackageX size={11}/> Out of stock
       </span>
     )
-    if (stock <= LOW) return (
+    if (stock <= lowStockThreshold) return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
         style={{ background:'#FDF0DC', color:'#8A4D0B' }}>
         <AlertTriangle size={11}/> Low: {stock}
@@ -577,6 +657,46 @@ export default function InventoryPage() {
       </header>
 
       <div className="max-w-screen-xl mx-auto px-4">
+        {/* ALERT SETTINGS */}
+        <div className="bg-white rounded-3xl border p-4 sm:p-5 shadow-sm mb-4"
+          style={{ borderColor:'#E4E2DC' }}>
+          <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold" style={{ color:'#1C1B19' }}>Low stock alert settings</div>
+              <div className="text-xs mt-1" style={{ color:'#6B6A66' }}>
+                Get alerted inside the app and by email when stock falls below your limit.
+              </div>
+            </div>
+            <button onClick={handleSaveProfile}
+              disabled={profileSaving}
+              className="h-9 px-4 rounded-lg text-sm font-semibold text-white"
+              style={{ background: profileSaving ? '#7FA8D0' : '#1A5FA8' }}>
+              {profileSaving ? 'Saving…' : 'Save alert settings'}
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+            <label className="text-xs font-semibold text-slate-700">
+              Notification email
+              <input type="email" value={profileEmail}
+                onChange={e => setProfileEmail(e.target.value)}
+                className="mt-2 w-full h-10 px-3 rounded-xl border text-sm outline-none"
+                style={{ borderColor:'#E4E2DC' }}
+                placeholder="you@example.com" />
+            </label>
+            <label className="text-xs font-semibold text-slate-700">
+              Low stock threshold
+              <input type="number" min={1} value={lowStockThreshold}
+                onChange={e => setLowStockThreshold(parseInt(e.target.value) || 1)}
+                className="mt-2 w-full h-10 px-3 rounded-xl border text-sm outline-none"
+                style={{ borderColor:'#E4E2DC' }}
+                placeholder="5" />
+            </label>
+            <div className="text-xs text-slate-600 leading-relaxed">
+              Your current alert threshold is <strong>{lowStockThreshold}</strong>. Products with stock at or below this value will be marked low stock and included in email alerts.
+            </div>
+          </div>
+        </div>
+
         {/* STATS */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-4">
           {[
@@ -633,6 +753,18 @@ export default function InventoryPage() {
           </select>
         </div>
 
+        {/* LOW STOCK ALERT */}
+        {(lowCount + outCount > 0) && (
+          <div className="rounded-3xl border bg-[#FFF5F5] p-4 mb-4" style={{ borderColor:'#F5C0C0' }}>
+            <div className="text-sm font-bold" style={{ color:'#9B2B2B' }}>
+              {lowCount + outCount} product{lowCount + outCount === 1 ? '' : 's'} low or out of stock
+            </div>
+            <div className="text-xs mt-1" style={{ color:'#6B6A66' }}>
+              Save your alert settings below to receive automatic email notifications when stock is low.
+            </div>
+          </div>
+        )}
+
         {/* TABS */}
         <div className="flex gap-1.5 pt-3 pb-1 overflow-x-auto no-scrollbar">
           {['All', ...Object.keys(CAT)].map(c => {
@@ -673,7 +805,7 @@ export default function InventoryPage() {
               return (
                 <div key={p.id}
                   className="bg-white rounded-xl border overflow-hidden flex flex-col group"
-                  style={{ borderColor: p.stock === 0 ? '#F5C0C0' : p.stock <= LOW ? '#F5C675' : '#E4E2DC' }}>
+                  style={{ borderColor: p.stock === 0 ? '#F5C0C0' : p.stock <= lowStockThreshold ? '#F5C675' : '#E4E2DC' }}>
                   <div className="relative overflow-hidden" style={{ height:145 }}>
                     <ProdImg p={p} h={145}/>
                     {d > 0 && (

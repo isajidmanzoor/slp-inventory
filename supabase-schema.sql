@@ -5,12 +5,13 @@
 
 -- ── PROFILES (one per auth user) ─────────────────────
 CREATE TABLE IF NOT EXISTS profiles (
-  id         UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  full_name  TEXT        NOT NULL DEFAULT '',
-  email      TEXT        UNIQUE,
-  phone      TEXT        UNIQUE,
-  role       TEXT        NOT NULL DEFAULT 'staff'   CHECK (role IN ('admin','staff')),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id                 UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  full_name          TEXT        NOT NULL DEFAULT '',
+  email              TEXT        UNIQUE,
+  phone              TEXT        UNIQUE,
+  low_stock_threshold INTEGER    NOT NULL DEFAULT 5,
+  role               TEXT        NOT NULL DEFAULT 'staff'   CHECK (role IN ('admin','staff')),
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Auto-create profile on sign-up

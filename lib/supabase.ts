@@ -42,6 +42,7 @@ export type Profile = {
   email: string | null
   phone: string | null
   role: 'admin' | 'staff'
+  low_stock_threshold?: number | null
   created_at?: string
 }
 
