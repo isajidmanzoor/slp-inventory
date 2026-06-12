@@ -686,7 +686,7 @@ export default function InventoryPage() {
                       <td className="px-3 py-2">
                         <div className="font-semibold text-xs leading-snug flex items-center gap-1">
                           {p.name}
-                          {(p as any).woo_id && <Wifi size={10} color="#085041" title="Synced"/>}
+                          {(p as any).woo_id && <Wifi size={10} color="#085041" aria-label="Synced"/>}
                         </div>
                         {p.sub_category && <div className="text-[11px]" style={{ color:'#9C9B97' }}>{p.sub_category}</div>}
                         {p.notes && <div className="text-[11px]" style={{ color:'#9C9B97' }}>{p.notes}</div>}
