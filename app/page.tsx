@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Search, LayoutGrid, List, Plus, Pencil, Trash2,
-  PackageX, AlertTriangle, CheckCircle2,
+  PackageX, AlertTriangle, CheckCircle2, Bell,
   X, Upload, RefreshCw, Package, Tag, DollarSign,
   LogOut, RefreshCcw, Wifi, WifiOff, User,
 } from 'lucide-react'
@@ -55,6 +55,7 @@ export default function InventoryPage() {
   const [profileLoading, setProfileLoading] = useState(true)
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileEmail, setProfileEmail] = useState('')
+  const [profileSchemaReady, setProfileSchemaReady] = useState(true)
   const [modal,      setModal]      = useState<'add'|'edit'|null>(null)
   const [editProd,   setEditProd]   = useState<Product|null>(null)
   const [form,       setForm]       = useState({ ...EMPTY })
@@ -109,7 +110,18 @@ export default function InventoryPage() {
         .from('profiles')
         .select('low_stock_threshold,email')
         .single()
-      if (!error && data) {
+
+      if (error) {
+        const missingThreshold = String(error.message || '').includes('low_stock_threshold')
+        if (missingThreshold) {
+          setProfileSchemaReady(false)
+          const { data: fallbackData } = await supabase
+            .from('profiles')
+            .select('email')
+            .single()
+          if (fallbackData?.email) setProfileEmail(fallbackData.email)
+        }
+      } else if (data) {
         if (typeof data.low_stock_threshold === 'number') {
           setLowStockThreshold(data.low_stock_threshold)
         }
@@ -221,15 +233,32 @@ export default function InventoryPage() {
     }
     setProfileSaving(true)
     try {
+      const payload: Record<string, unknown> = {
+        id: user.id,
+        email: profileEmail.trim(),
+      }
+      if (profileSchemaReady) {
+        payload.low_stock_threshold = lowStockThreshold
+      }
+
       const { error } = await supabase
         .from('profiles')
-        .upsert({
-          id: user.id,
-          email: profileEmail.trim(),
-          low_stock_threshold: lowStockThreshold,
-        }, { onConflict: 'id' })
-      if (error) throw new Error(error.message)
-      showToast('✅ Alert settings saved')
+        .upsert(payload, { onConflict: 'id' })
+      if (error) {
+        const missingThreshold = String(error.message || '').includes('low_stock_threshold')
+        if (missingThreshold) {
+          setProfileSchemaReady(false)
+          const { error: fallbackError } = await supabase
+            .from('profiles')
+            .upsert({ id: user.id, email: profileEmail.trim() }, { onConflict: 'id' })
+          if (fallbackError) throw new Error(fallbackError.message)
+          showToast('✅ Alert email saved. Low-stock threshold requires schema migration.', 'ok')
+        } else {
+          throw new Error(error.message)
+        }
+      } else {
+        showToast('✅ Alert settings saved')
+      }
     } catch (e: any) {
       showToast(e.message || 'Save failed', 'err')
     }
@@ -694,6 +723,12 @@ export default function InventoryPage() {
             <div className="text-xs text-slate-600 leading-relaxed">
               Your current alert threshold is <strong>{lowStockThreshold}</strong>. Products with stock at or below this value will be marked low stock and included in email alerts.
             </div>
+            {!profileSchemaReady && (
+              <div className="rounded-2xl border border-[#F5D58F] bg-[#FFFAEB] p-3 text-sm mt-3"
+                style={{ color:'#8A5F0B' }}>
+                Low stock threshold persistence is unavailable in your database schema. Add `low_stock_threshold` to `profiles` to make this setting permanent.
+              </div>
+            )}
           </div>
         </div>
 
@@ -812,11 +847,23 @@ export default function InventoryPage() {
                       <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
                         style={{ background:'#1A5FA8' }}>-{d}%</div>
                     )}
+                    {(p.stock === 0 || p.stock <= lowStockThreshold) && (
+                      <div className="absolute top-2 left-2 w-8 h-8 rounded-full bg-white/90 border flex items-center justify-center"
+                        style={{ borderColor:'#F5C0C0', color:'#9B2B2B' }} title="Low stock alert">
+                        <Bell size={14}/>
+                      </div>
+                    )}
                     {(p as any).woo_id && (
                       <div className="absolute bottom-2 right-2 w-5 h-5 rounded-full flex items-center justify-center"
                         title="Synced from WooCommerce"
                         style={{ background:'rgba(8,80,65,0.85)' }}>
                         <Wifi size={10} color="white"/>
+                      </div>
+                    )}
+                    {(p.stock === 0 || p.stock <= lowStockThreshold) && (
+                      <div className="absolute top-2 left-2 w-8 h-8 rounded-full bg-white/90 border flex items-center justify-center"
+                        style={{ borderColor:'#F5C0C0', color:'#9B2B2B' }} title="Low stock alert">
+                        <Bell size={14}/>
                       </div>
                     )}
                     <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -880,8 +927,14 @@ export default function InventoryPage() {
                         </div>
                       </td>
                       <td className="px-3 py-2">
-                        <div className="font-semibold text-xs leading-snug flex items-center gap-1">
+                        <div className="font-semibold text-xs leading-snug flex flex-wrap items-center gap-1">
                           {p.name}
+                          {(p.stock === 0 || p.stock <= lowStockThreshold) && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                              style={{ background:'#FFEBED', color:'#9B2B2B' }}>
+                              <Bell size={12}/> Low stock
+                            </span>
+                          )}
                           {(p as any).woo_id && <Wifi size={10} color="#085041" aria-label="Synced"/>}
                         </div>
                         {p.sub_category && <div className="text-[11px]" style={{ color:'#9C9B97' }}>{p.sub_category}</div>}
