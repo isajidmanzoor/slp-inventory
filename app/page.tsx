@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Search, LayoutGrid, List, Plus, Pencil, Trash2,
-  PackageX, AlertTriangle, CheckCircle2, Bell,
+  PackageX, AlertTriangle, CheckCircle2, Bell, BellOff,
   X, Upload, RefreshCw, Package, Tag, DollarSign,
-  LogOut, RefreshCcw, Wifi, WifiOff, User,
+  LogOut, RefreshCcw, Wifi, WifiOff, User, ExternalLink,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Product } from '@/lib/supabase'
@@ -30,7 +30,7 @@ const LOW = 5, PER = 16
 
 const EMPTY = {
   name:'', category:'', sub_category:'', sale_price:'',
-  original_price:'', stock:'', notes:'', image_url:'',
+  original_price:'', stock:'', notes:'', image_url:'', store_url:'',
 }
 const inp = `w-full px-3 py-2.5 rounded-xl border text-sm outline-none transition-all
   focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white`
@@ -44,7 +44,6 @@ export default function InventoryPage() {
   const [saving,     setSaving]     = useState(false)
   const [syncing,    setSyncing]    = useState(false)
   const [syncResult, setSyncResult] = useState<string|null>(null)
-  const [hasAutoSynced, setHasAutoSynced] = useState(false)
   const [view,       setView]       = useState<'grid'|'list'>('grid')
   const [activeCat,  setActiveCat]  = useState('All')
   const [activeStat, setActiveStat] = useState<'all'|'instock'|'value'|'lowstock'>('all')
@@ -63,6 +62,8 @@ export default function InventoryPage() {
   const [confirmId,  setConfirmId]  = useState<number|null>(null)
   const [toast,      setToast]      = useState<{msg:string;type:'ok'|'err'}|null>(null)
   const [userMenu,   setUserMenu]   = useState(false)
+  const [lowStockBannerDismissed, setLowStockBannerDismissed] = useState(false)
+  const [alertSettingsCollapsed,  setAlertSettingsCollapsed]  = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const imgDataRef = useRef<string|null>(null)
 
@@ -135,17 +136,12 @@ export default function InventoryPage() {
     setProfileLoading(false)
   }
 
-  useEffect(() => {
-    if (authLoading || loading || hasAutoSynced) return
-    if (products.length === 0) {
-      setHasAutoSynced(true)
-      if (process.env.NEXT_PUBLIC_SYNC_SECRET) {
-        handleSync()
-      } else {
-        setSyncResult('🔧 Configure NEXT_PUBLIC_SYNC_SECRET + WooCommerce keys for auto-sync')
-      }
-    }
-  }, [authLoading, loading, products.length, hasAutoSynced])
+  // NOTE: Auto-sync-when-empty was intentionally removed.
+  // It used to silently restore products you had just deleted
+  // (because an empty/short list would re-trigger a full
+  // WooCommerce sync), which felt like "data comes back on
+  // refresh." Sync now only ever runs when you explicitly
+  // click "Sync Store" — see handleSync() below.
 
   // Real-time
   useEffect(() => {
@@ -211,7 +207,7 @@ export default function InventoryPage() {
 
   async function sendLowStockEmail(products: Product[]) {
     if (!profileEmail) return
-    const lowProducts = products.filter(p => p.stock > 0 && p.stock <= lowStockThreshold)
+    const lowProducts = products.filter(p => p.alert_enabled && p.stock > 0 && p.stock <= lowStockThreshold)
     if (lowProducts.length === 0) return
 
     try {
@@ -305,11 +301,19 @@ export default function InventoryPage() {
 
   const totalStock = products.reduce((s,p) => s + p.stock, 0)
   const stockValue = products.reduce((s,p) => s + p.sale_price * p.stock, 0)
-  const lowCount   = products.filter(p => p.stock > 0 && p.stock <= lowStockThreshold).length
-  const outCount   = products.filter(p => p.stock === 0).length
+  const lowCount   = products.filter(p => p.alert_enabled && p.stock > 0 && p.stock <= lowStockThreshold).length
+  const outCount   = products.filter(p => p.alert_enabled && p.stock === 0).length
   const valStr     = stockValue >= 1_000_000 ? (stockValue/1_000_000).toFixed(1)+'M'
                    : stockValue >= 1000       ? (stockValue/1000).toFixed(0)+'K'
                    : String(stockValue)
+
+  // Re-show the low-stock banner if the alert count goes up after being dismissed
+  const prevAlertCountRef = useRef(0)
+  useEffect(() => {
+    const count = lowCount + outCount
+    if (count > prevAlertCountRef.current) setLowStockBannerDismissed(false)
+    prevAlertCountRef.current = count
+  }, [lowCount, outCount])
 
   // ── Modal helpers ─────────────────────────────────
   function openAdd() {
@@ -321,6 +325,7 @@ export default function InventoryPage() {
       name: p.name, category: p.category, sub_category: p.sub_category,
       sale_price: String(p.sale_price), original_price: String(p.original_price),
       stock: String(p.stock), notes: p.notes, image_url: p.image_url ?? '',
+      store_url: p.store_url ?? '',
     })
     setImgPreview(p.image_url ?? null)
     imgDataRef.current = null; setEditProd(p); setModal('edit')
@@ -357,6 +362,7 @@ export default function InventoryPage() {
       stock:          parseInt(form.stock)            || 0,
       notes:          form.notes.trim(),
       image_url:      finalUrl,
+      store_url:      form.store_url.trim() || null,
     }
     try {
       if (modal === 'edit' && editProd) {
@@ -402,6 +408,24 @@ export default function InventoryPage() {
     setSaving(false)
   }
 
+  async function toggleAlert(p: Product) {
+    const next = !p.alert_enabled
+    // optimistic update
+    setProducts(prev => prev.map(x => x.id === p.id ? { ...x, alert_enabled: next } : x))
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ alert_enabled: next })
+        .eq('id', p.id)
+      if (error) throw new Error(error.message)
+      showToast(next ? `🔔 Alerts on for "${p.name}"` : `🔕 Alerts muted for "${p.name}"`)
+    } catch (e: any) {
+      // revert on failure
+      setProducts(prev => prev.map(x => x.id === p.id ? { ...x, alert_enabled: !next } : x))
+      showToast(e.message || 'Could not update alert', 'err')
+    }
+  }
+
   function StockBadge({ stock }: { stock: number }) {
     if (stock === 0) return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
@@ -426,20 +450,42 @@ export default function InventoryPage() {
   function ProdImg({ p, h }: { p: Product; h: number }) {
     const [err, setErr] = useState(false)
     const m = cm(p.category)
-    
+
     // Only show image if URL exists and is valid
     const hasValidUrl = p.image_url && p.image_url.trim().length > 0 && p.image_url.startsWith('http')
-    
-    if (!hasValidUrl || err) return (
-      <div style={{ height:h, background:m.bg, display:'flex', alignItems:'center',
-        justifyContent:'center', fontSize: h > 80 ? 42 : 22 }}>{m.emoji}</div>
-    )
-    return <img 
-      src={p.image_url || ''} 
-      alt={p.name} 
+
+    if (!hasValidUrl || err) {
+      const ph = (
+        <div style={{ height:h, background:m.bg, display:'flex', alignItems:'center',
+          justifyContent:'center', fontSize: h > 80 ? 42 : 22 }}>{m.emoji}</div>
+      )
+      // If we know the live store page, make the placeholder a link so
+      // staff can quickly open the real product photo on the website.
+      if (p.store_url && h > 80) {
+        return (
+          <a href={p.store_url} target="_blank" rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            title="No image saved yet — open on smartlivingpakistan.com"
+            style={{ display:'block', position:'relative' }}>
+            {ph}
+            <span style={{
+              position:'absolute', bottom:4, right:4, background:'rgba(0,0,0,0.55)',
+              color:'#fff', fontSize:9, fontWeight:600, padding:'2px 6px', borderRadius:8,
+              display:'flex', alignItems:'center', gap:3,
+            }}>
+              <ExternalLink size={9}/> View on store
+            </span>
+          </a>
+        )
+      }
+      return ph
+    }
+    return <img
+      src={p.image_url || ''}
+      alt={p.name}
       loading="lazy"
       onError={() => setErr(true)}
-      style={{ width:'100%', height:h, objectFit:'cover', display:'block' }} 
+      style={{ width:'100%', height:h, objectFit:'cover', display:'block' }}
     />
   }
 
@@ -467,10 +513,17 @@ export default function InventoryPage() {
 
       {/* SYNC RESULT BANNER */}
       {syncResult && (
-        <div className="fixed top-16 left-1/2 z-40 px-4 py-2 rounded-xl text-sm font-medium shadow-lg"
+        <div className="fixed top-16 left-1/2 z-40 px-4 py-2 pr-9 rounded-xl text-sm font-medium shadow-lg"
           style={{ transform:'translateX(-50%)', background:'white', border:'1px solid #E4E2DC',
-            color:'#1C1B19', maxWidth:'90vw', textAlign:'center' }}>
+            color:'#1C1B19', maxWidth:'90vw', textAlign:'center', position:'fixed' }}>
           {syncResult}
+          <button
+            onClick={() => setSyncResult(null)}
+            aria-label="Dismiss"
+            className="absolute top-1/2 -translate-y-1/2 right-2 w-6 h-6 rounded-full flex items-center justify-center hover:bg-gray-100"
+            style={{ color:'#9C9B97' }}>
+            <X size={14}/>
+          </button>
         </div>
       )}
 
@@ -538,6 +591,20 @@ export default function InventoryPage() {
                       }}
                       className={inp} style={{ borderColor:'#E4E2DC' }}/>
                   </div>
+                </div>
+                {/* Live store link — helps fill in a missing image */}
+                <div className="mt-2">
+                  <input type="url" placeholder="Live store page URL (optional) — e.g. https://smartlivingpakistan.com/product/…"
+                    value={form.store_url}
+                    onChange={e => setForm(f => ({ ...f, store_url: e.target.value }))}
+                    className={inp} style={{ borderColor:'#E4E2DC' }}/>
+                  {form.store_url && (
+                    <a href={form.store_url} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 mt-1.5 text-xs font-semibold"
+                      style={{ color:'#1A5FA8' }}>
+                      <ExternalLink size={12}/> Open product page to copy its photo URL
+                    </a>
+                  )}
                 </div>
               </div>
 
@@ -636,6 +703,22 @@ export default function InventoryPage() {
             style={{ borderColor:'#E4E2DC', color:'#6B6A66' }} title="Refresh">
             <RefreshCw size={14}/>
           </button>
+          <button onClick={() => setAlertSettingsCollapsed(v => !v)}
+            className="w-8 h-8 rounded-lg border flex items-center justify-center relative"
+            style={{
+              borderColor: alertSettingsCollapsed ? '#E4E2DC' : '#B8D4F5',
+              background:  alertSettingsCollapsed ? 'white' : '#E8F1FB',
+              color:       alertSettingsCollapsed ? '#6B6A66' : '#1A5FA8',
+            }}
+            title={alertSettingsCollapsed ? 'Show alert settings' : 'Hide alert settings'}>
+            <Bell size={14}/>
+            {(lowCount + outCount) > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center text-white"
+                style={{ background:'#9B2B2B' }}>
+                {Math.min(lowCount + outCount, 9)}
+              </span>
+            )}
+          </button>
           <div className="flex border rounded-lg overflow-hidden" style={{ borderColor:'#E4E2DC' }}>
             {(['grid','list'] as const).map(v => (
               <button key={v} onClick={() => setView(v)}
@@ -687,8 +770,17 @@ export default function InventoryPage() {
 
       <div className="max-w-screen-xl mx-auto px-4">
         {/* ALERT SETTINGS */}
-        <div className="bg-white rounded-3xl border p-4 sm:p-5 shadow-sm mb-4"
+        {!alertSettingsCollapsed && (
+        <div className="relative bg-white rounded-3xl border p-4 sm:p-5 shadow-sm mb-4 pr-12"
           style={{ borderColor:'#E4E2DC' }}>
+          <button
+            onClick={() => setAlertSettingsCollapsed(true)}
+            aria-label="Hide alert settings"
+            title="Hide this panel (use the bell icon in the header to bring it back)"
+            className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100"
+            style={{ color:'#9C9B97' }}>
+            <X size={15}/>
+          </button>
           <div className="flex flex-col sm:flex-row sm:items-end gap-3">
             <div className="flex-1 min-w-0">
               <div className="text-sm font-semibold" style={{ color:'#1C1B19' }}>Low stock alert settings</div>
@@ -731,6 +823,7 @@ export default function InventoryPage() {
             )}
           </div>
         </div>
+        )}
 
         {/* STATS */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-4">
@@ -789,13 +882,21 @@ export default function InventoryPage() {
         </div>
 
         {/* LOW STOCK ALERT */}
-        {(lowCount + outCount > 0) && (
-          <div className="rounded-3xl border bg-[#FFF5F5] p-4 mb-4" style={{ borderColor:'#F5C0C0' }}>
+        {(lowCount + outCount > 0) && !lowStockBannerDismissed && (
+          <div className="relative rounded-3xl border bg-[#FFF5F5] p-4 pr-12 mb-4" style={{ borderColor:'#F5C0C0' }}>
+            <button
+              onClick={() => setLowStockBannerDismissed(true)}
+              aria-label="Dismiss low stock alert"
+              className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/60"
+              style={{ color:'#9B2B2B' }}>
+              <X size={15}/>
+            </button>
             <div className="text-sm font-bold" style={{ color:'#9B2B2B' }}>
               {lowCount + outCount} product{lowCount + outCount === 1 ? '' : 's'} low or out of stock
             </div>
             <div className="text-xs mt-1" style={{ color:'#6B6A66' }}>
               Save your alert settings below to receive automatic email notifications when stock is low.
+              Mute the bell on individual products you don't want to be notified about.
             </div>
           </div>
         )}
@@ -847,16 +948,27 @@ export default function InventoryPage() {
                       <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
                         style={{ background:'#1A5FA8' }}>-{d}%</div>
                     )}
-                    {(p.stock === 0 || p.stock <= lowStockThreshold) && (
-                      <button onClick={() => openEdit(p)}
-                        type="button"
-                        className="absolute top-2 left-2 w-8 h-8 rounded-full bg-white/90 border flex items-center justify-center"
+                    {(p.stock === 0 || p.stock <= lowStockThreshold) && p.alert_enabled && (
+                      <div className="absolute top-2 left-2 w-7 h-7 rounded-full bg-white/95 border flex items-center justify-center"
                         style={{ borderColor:'#F5C0C0', color:'#9B2B2B' }}
-                        title="Low stock alert — click to edit"
-                        aria-label="Edit low-stock product">
-                        <Bell size={14}/>
-                      </button>
+                        title="Low stock — alert active">
+                        <Bell size={13}/>
+                      </div>
                     )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleAlert(p) }}
+                      type="button"
+                      className="absolute bottom-2 left-2 w-7 h-7 rounded-full border flex items-center justify-center transition-colors"
+                      style={{
+                        background: p.alert_enabled ? 'rgba(255,255,255,0.95)' : 'rgba(28,27,25,0.55)',
+                        borderColor: p.alert_enabled ? '#E4E2DC' : 'transparent',
+                        color: p.alert_enabled ? '#1A5FA8' : '#fff',
+                      }}
+                      title={p.alert_enabled ? 'Mute low-stock alerts for this product' : 'Unmute low-stock alerts for this product'}
+                      aria-pressed={p.alert_enabled}
+                      aria-label={p.alert_enabled ? 'Mute alerts' : 'Unmute alerts'}>
+                      {p.alert_enabled ? <Bell size={13}/> : <BellOff size={13}/>}
+                    </button>
                     {(p as any).woo_id && (
                       <div className="absolute bottom-2 right-2 w-5 h-5 rounded-full flex items-center justify-center"
                         title="Synced from WooCommerce"
@@ -865,6 +977,15 @@ export default function InventoryPage() {
                       </div>
                     )}
                     <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {!p.image_url && p.store_url && (
+                        <a href={p.store_url} target="_blank" rel="noopener noreferrer"
+                          onClick={e => e.stopPropagation()}
+                          className="w-7 h-7 rounded-md bg-white border flex items-center justify-center"
+                          style={{ borderColor:'#B8D4F5', color:'#1A5FA8' }}
+                          title="Open on smartlivingpakistan.com">
+                          <ExternalLink size={12}/>
+                        </a>
+                      )}
                       <button onClick={() => openEdit(p)}
                         className="w-7 h-7 rounded-md bg-white border flex items-center justify-center"
                         style={{ borderColor:'#E4E2DC' }}>
@@ -927,12 +1048,24 @@ export default function InventoryPage() {
                       <td className="px-3 py-2">
                         <div className="font-semibold text-xs leading-snug flex flex-wrap items-center gap-1">
                           {p.name}
-                          {(p.stock === 0 || p.stock <= lowStockThreshold) && (
+                          {(p.stock === 0 || p.stock <= lowStockThreshold) && p.alert_enabled && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
                               style={{ background:'#FFEBED', color:'#9B2B2B' }}>
                               <Bell size={12}/> Low stock
                             </span>
                           )}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleAlert(p) }}
+                            type="button"
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border"
+                            style={{
+                              borderColor: p.alert_enabled ? '#E4E2DC' : '#D3D1C7',
+                              color: p.alert_enabled ? '#1A5FA8' : '#9C9B97',
+                              background: p.alert_enabled ? '#fff' : '#F5F4F0',
+                            }}
+                            title={p.alert_enabled ? 'Mute alerts for this product' : 'Unmute alerts for this product'}>
+                            {p.alert_enabled ? <Bell size={11}/> : <BellOff size={11}/>}
+                          </button>
                           {(p as any).woo_id && <Wifi size={10} color="#085041" aria-label="Synced"/>}
                         </div>
                         {p.sub_category && <div className="text-[11px]" style={{ color:'#9C9B97' }}>{p.sub_category}</div>}

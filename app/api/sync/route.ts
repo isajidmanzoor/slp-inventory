@@ -5,7 +5,6 @@ const WOO_BASE = 'https://smartlivingpakistan.com/wp-json/wc/v3'
 const WOO_KEY  = process.env.WOO_CONSUMER_KEY  || ''
 const WOO_SEC  = process.env.WOO_CONSUMER_SECRET || ''
 
-// Map WooCommerce category slugs / names → our category names
 const CAT_MAP: Record<string, string> = {
   'lights': 'Lights', 'lighting': 'Lights',
   'switch-plates': 'Switch Plates', 'switch plates': 'Switch Plates', 'switchboards': 'Switch Plates',
@@ -39,15 +38,12 @@ async function fetchAllWooProducts(): Promise<any[]> {
       next: { revalidate: 0 },
       headers: { 'Accept': 'application/json' },
     })
-
     if (!res.ok) {
       const body = await res.text()
       throw new Error(`WooCommerce API error ${res.status} ${res.statusText}: ${body}`)
     }
-
     const data = await res.json()
     if (!Array.isArray(data) || data.length === 0) break
-
     all.push(...data)
     if (data.length < 100) break
     page++
@@ -55,90 +51,92 @@ async function fetchAllWooProducts(): Promise<any[]> {
   return all
 }
 
+async function runSync() {
+  let added = 0, updated = 0, skippedDeleted = 0
+
+  if (!WOO_KEY || !WOO_SEC) {
+    return { ok: false, error: 'WooCommerce API keys not configured. Add WOO_CONSUMER_KEY and WOO_CONSUMER_SECRET to your environment variables.' }
+  }
+
+  const wooProducts = await fetchAllWooProducts()
+
+  // Load the "do not restore" list once
+  const { data: deletedRows } = await supabase.from('deleted_products').select('woo_id')
+  const deletedWooIds = new Set((deletedRows ?? []).map((r: any) => r.woo_id))
+
+  for (const wp of wooProducts) {
+    const name = wp.name?.replace(/<[^>]+>/g, '').trim()
+    if (!name) continue
+
+    // Respect manual deletions: never resurrect a product the user removed
+    if (deletedWooIds.has(wp.id)) { skippedDeleted++; continue }
+
+    const salePrice = parseFloat(wp.sale_price || wp.price || '0') || 0
+    const origPrice = parseFloat(wp.regular_price || '0') || 0
+    const stock     = wp.stock_quantity ?? (wp.in_stock ? 10 : 0)
+
+    let imageUrl: string | null = null
+    if (Array.isArray(wp.images) && wp.images.length > 0) {
+      const firstImg = wp.images[0]?.src
+      if (firstImg && typeof firstImg === 'string' && firstImg.trim()) imageUrl = firstImg.trim()
+    }
+    const storeUrl  = typeof wp.permalink === 'string' ? wp.permalink : null
+    const category  = mapCategory(wp.categories || [])
+    const subCat    = wp.categories?.[1]?.name || ''
+
+    const { data: existing } = await supabase
+      .from('products')
+      .select('id, name, stock, image_url, alert_enabled')
+      .or(`woo_id.eq.${wp.id},name.ilike.${name}`)
+      .maybeSingle()
+
+    if (existing) {
+      // Never blank out an image that's already there
+      const finalImage = imageUrl || existing.image_url || null
+      await supabase.from('products').update({
+        name, category, sub_category: subCat,
+        sale_price: salePrice, original_price: origPrice,
+        stock, image_url: finalImage, store_url: storeUrl,
+        woo_id: wp.id, last_synced_at: new Date().toISOString(),
+      }).eq('id', existing.id)
+      updated++
+    } else {
+      await supabase.from('products').insert({
+        name, category, sub_category: subCat,
+        sale_price: salePrice, original_price: origPrice,
+        stock: stock || 0, notes: '',
+        image_url: imageUrl, store_url: storeUrl,
+        woo_id: wp.id, last_synced_at: new Date().toISOString(),
+        alert_enabled: true,
+      })
+      added++
+    }
+  }
+
+  await supabase.from('sync_log').insert({
+    added, updated, total_found: wooProducts.length, status: 'ok',
+    message: skippedDeleted > 0 ? `Skipped ${skippedDeleted} manually-deleted product(s)` : null,
+  })
+
+  return { ok: true, added, updated, total: wooProducts.length, skippedDeleted }
+}
+
 export async function POST(req: NextRequest) {
-  // Require auth
   const authHeader = req.headers.get('authorization')
   const syncSecret = process.env.SYNC_SECRET || ''
   if (syncSecret && authHeader !== `Bearer ${syncSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-
-  let added = 0, updated = 0
-  let status = 'ok', message = ''
-
   try {
-    // If no WooCommerce credentials, return graceful message
-    if (!WOO_KEY || !WOO_SEC) {
-      return NextResponse.json({
-        ok: false,
-        error: 'WooCommerce API keys not configured. Add WOO_CONSUMER_KEY and WOO_CONSUMER_SECRET to your environment variables.',
-      }, { status: 200 })
-    }
-
-    const wooProducts = await fetchAllWooProducts()
-
-    for (const wp of wooProducts) {
-      const name = wp.name?.replace(/<[^>]+>/g, '').trim()
-      if (!name) continue
-
-      const salePrice = parseFloat(wp.sale_price || wp.price || '0') || 0
-      const origPrice = parseFloat(wp.regular_price || '0') || 0
-      const stock     = wp.stock_quantity ?? (wp.in_stock ? 10 : 0)
-      
-      // Extract image URL more robustly
-      let imageUrl = null
-      if (wp.images && Array.isArray(wp.images) && wp.images.length > 0) {
-        const firstImg = wp.images[0]?.src
-        if (firstImg && typeof firstImg === 'string' && firstImg.trim()) {
-          imageUrl = firstImg.trim()
-        }
-      }
-      
-      const category  = mapCategory(wp.categories || [])
-      const subCat    = wp.categories?.[1]?.name || ''
-
-      // Check if exists by woo_id or name
-      const { data: existing } = await supabase
-        .from('products')
-        .select('id, name, stock')
-        .or(`woo_id.eq.${wp.id},name.ilike.${name}`)
-        .maybeSingle()
-
-      if (existing) {
-        await supabase.from('products').update({
-          name, category, sub_category: subCat,
-          sale_price: salePrice, original_price: origPrice,
-          stock, image_url: imageUrl,
-          woo_id: wp.id, last_synced_at: new Date().toISOString(),
-        }).eq('id', existing.id)
-        updated++
-      } else {
-        await supabase.from('products').insert({
-          name, category, sub_category: subCat,
-          sale_price: salePrice, original_price: origPrice,
-          stock: stock || 0, notes: '',
-          image_url: imageUrl,
-          woo_id: wp.id, last_synced_at: new Date().toISOString(),
-        })
-        added++
-      }
-    }
-
-    // Log sync
-    await supabase.from('sync_log').insert({
-      added, updated, total_found: wooProducts.length, status: 'ok',
-    })
-
-    return NextResponse.json({ ok: true, added, updated, total: wooProducts.length })
+    const result = await runSync()
+    return NextResponse.json(result, { status: 200 })
   } catch (err: any) {
-    status = 'error'
-    message = err?.message || 'Unknown error'
-    await supabase.from('sync_log').insert({ added, updated, total_found: 0, status, message })
+    const message = err?.message || 'Unknown error'
+    await supabase.from('sync_log').insert({ added: 0, updated: 0, total_found: 0, status: 'error', message })
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }
 
-// GET — last sync info
 export async function GET() {
   const { data } = await supabase
     .from('sync_log')
