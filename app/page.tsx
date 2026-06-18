@@ -6,7 +6,7 @@ import {
   Search, LayoutGrid, List, Plus, Pencil, Trash2,
   PackageX, AlertTriangle, CheckCircle2, Bell, BellOff,
   X, Upload, RefreshCw, Package, Tag, DollarSign,
-  LogOut, RefreshCcw, Wifi, WifiOff, User, ExternalLink,
+  LogOut, RefreshCcw, Wifi, WifiOff, User, ExternalLink, FileText,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Product } from '@/lib/supabase'
@@ -689,6 +689,13 @@ export default function InventoryPage() {
           <div className="text-xs hidden sm:block" style={{ color:'#9C9B97' }}>Inventory Management</div>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {/* Invoices nav */}
+          <a href="/invoices"
+            className="hidden sm:flex items-center gap-1.5 px-3 h-8 rounded-lg border text-xs font-semibold"
+            style={{ borderColor:'#E4E2DC', color:'#1A5FA8', background:'#E8F1FB' }}
+            title="Manage invoices">
+            <FileText size={13}/> Invoices
+          </a>
           {/* Sync button */}
           <button onClick={handleSync} disabled={syncing}
             className="hidden sm:flex items-center gap-1.5 px-3 h-8 rounded-lg border text-xs font-semibold"
@@ -751,6 +758,11 @@ export default function InventoryPage() {
                     {user?.user_metadata?.full_name || 'Staff'}
                   </div>
                 </div>
+                <a href="/invoices"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-xs hover:bg-gray-50 sm:hidden"
+                  style={{ color:'#1A5FA8' }}>
+                  <FileText size={13}/> Invoices
+                </a>
                 <button onClick={handleSync} disabled={syncing}
                   className="w-full flex items-center gap-2 px-3 py-2.5 text-xs hover:bg-gray-50"
                   style={{ color:'#085041' }}>

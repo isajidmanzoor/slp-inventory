@@ -57,3 +57,56 @@ export type SyncLog = {
   status: string
   message?: string
 }
+
+export type InvoiceItem = {
+  id?: number
+  invoice_id?: number
+  product_id: number | null
+  product_name: string
+  sku: string
+  quantity: number
+  unit_price: number
+  discount: number
+  tax_pct: number
+  line_total: number
+}
+
+export type Invoice = {
+  id: number
+  invoice_number: string
+  order_id: string | null
+  invoice_date: string
+  due_date: string | null
+  payment_status: 'Paid' | 'Unpaid' | 'Partial' | 'Refunded'
+  company_logo_url: string | null
+
+  customer_name: string
+  customer_email: string | null
+  customer_phone: string | null
+  billing_address: string
+  shipping_address: string
+
+  subtotal: number
+  shipping_charges: number
+  discount_amount: number
+  tax_amount: number
+  delivery_tax: number
+  grand_total: number
+  currency: string
+
+  payment_method: 'Card' | 'Bank' | 'COD' | 'Wallet' | null
+  transaction_id: string | null
+  payment_date: string | null
+  amount_paid: number
+
+  courier_name: string | null
+  tracking_number: string | null
+  delivery_status: 'Pending' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Returned' | null
+
+  notes: string | null
+  public_token: string
+
+  created_at?: string
+  updated_at?: string
+  items?: InvoiceItem[]
+}
