@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
           await db.from('products').update(updateData).eq('id', (found as any).id)
           updated++
         } else {
-          await db.from('products').insert({
+          await db.from("products").upsert({
             name: title,
             category,
             sub_category: '',
@@ -83,6 +83,7 @@ export async function GET(req: NextRequest) {
             image_url: og.image,
             store_url: url,
             alert_enabled: true,
+          }, { onConflict: "store_url" })
           })
           added++
         }
