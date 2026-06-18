@@ -683,7 +683,7 @@ export default function InventoryPage() {
       <header className="sticky top-0 z-30 bg-white border-b flex items-center gap-3 px-4 py-3"
         style={{ borderColor:'#E4E2DC' }}>
         <div className="w-9 h-9 rounded-lg flex items-center justify-center text-xl flex-shrink-0"
-          style={{ background:'#E8F1FB' }}>🏬</div>
+          style={{ background:'#E8F1FB', overflow:'hidden' }}><img src="https://smartlivingpakistan.com/wp-content/uploads/2025/07/New-logo-Smart-Living-Pakistan-mobile-7.png.webp" alt="SLP" style={{height:32,width:'auto'}}/></div>
         <div>
           <div className="text-sm font-bold leading-tight">Smart Living Pakistan</div>
           <div className="text-xs hidden sm:block" style={{ color:'#9C9B97' }}>Inventory Management</div>
