@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
   try {
     const sitemapRes = await fetch('https://smartlivingpakistan.com/product-sitemap.xml')
     const sitemapXml = await sitemapRes.text()
-    const urls = [...sitemapXml.matchAll(/<loc>([^<]+)<\/loc>/g)]
+    const urls = Array.from(sitemapXml.matchAll(/<loc>([^<]+)<\/loc>/g)]
       .map(m => m[1])
       .filter(u => u.includes('/product/'))
 
