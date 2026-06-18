@@ -3,7 +3,6 @@ import { supabase } from '@/lib/supabase'
 import { calcInvoiceTotals } from '@/lib/invoice-utils'
 import type { InvoiceItem } from '@/lib/supabase'
 
-// GET — list invoices (with optional search/status filter)
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const status = searchParams.get('status')
@@ -22,7 +21,6 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(data, { headers: { 'Cache-Control': 'no-store' } })
 }
 
-// POST — create a new invoice + its line items
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
@@ -42,7 +40,6 @@ export async function POST(req: NextRequest) {
     const { subtotal, discountAmount, taxAmount, grandTotal } =
       calcInvoiceTotals(items, shippingCharges, deliveryTax, extraDiscount)
 
-    // Generate the next sequential invoice number via the DB function
     const { data: numData, error: numErr } = await supabase.rpc('generate_invoice_number')
     if (numErr) throw numErr
     const invoiceNumber = numData as string
@@ -105,7 +102,11 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ...invoice, items: itemsToInsert }, { status: 201 })
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to create invoice'
+    const message =
+      err instanceof Error ? err.message :
+      (err && typeof err === 'object' && 'message' in err) ? String((err as any).message) :
+      JSON.stringify(err)
+    console.error('Create invoice error:', err)
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
