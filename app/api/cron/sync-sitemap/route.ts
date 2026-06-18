@@ -50,8 +50,6 @@ export async function GET(req: NextRequest) {
       if (match[1].includes('/product/')) urls.push(match[1])
     }
 
-    console.log('Found ' + urls.length + ' products in sitemap')
-
     const { data: existing } = await db.from('products').select('id, store_url, image_url')
     const existingMap = new Map((existing ?? []).map((p: any) => [p.store_url, p]))
 
@@ -72,7 +70,7 @@ export async function GET(req: NextRequest) {
           await db.from('products').update(updateData).eq('id', (found as any).id)
           updated++
         } else {
-          await db.from("products").upsert({
+          await db.from('products').upsert({
             name: title,
             category,
             sub_category: '',
@@ -83,8 +81,7 @@ export async function GET(req: NextRequest) {
             image_url: og.image,
             store_url: url,
             alert_enabled: true,
-          }, { onConflict: "store_url" })
-          })
+          }, { onConflict: 'store_url' })
           added++
         }
         await new Promise(r => setTimeout(r, 200))
