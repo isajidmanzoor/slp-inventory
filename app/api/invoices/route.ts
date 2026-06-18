@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 import { calcInvoiceTotals } from '@/lib/invoice-utils'
 import type { InvoiceItem } from '@/lib/supabase'
+
+const supabase = supabaseAdmin()
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)

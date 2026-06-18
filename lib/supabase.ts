@@ -20,6 +20,16 @@ export const supabase = missingSupabaseEnv
   ? createMissingSupabaseClient()
   : createClient(supabaseUrl, supabaseKey)
 
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+export function supabaseAdmin(): SupabaseClient {
+  if (!supabaseUrl || !serviceRoleKey) {
+    return createMissingSupabaseClient()
+  }
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+}
+
 export type Product = {
   id: number
   name: string
