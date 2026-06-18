@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 export const runtime = 'nodejs'
 export const maxDuration = 300
 
-async function getOgData(url: string) {
+async function getProductData(url: string) {
   try {
     const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } })
     const html = await res.text()
@@ -12,9 +12,16 @@ async function getOgData(url: string) {
       const m = html.match(new RegExp('property="' + prop + '"\\s+content="([^"]+)"'))
       return m ? m[1] : null
     }
-    const priceMatch = html.match(/[\u20a8]\s*([\d,]+)/)
-    const price = priceMatch ? parseFloat(priceMatch[1].replace(/,/g, '')) : 0
-    return { title: get('og:title'), image: get('og:image'), price }
+    const priceMatch = html.match(/"price":"([\d.]+)"/)
+    const price = priceMatch ? parseFloat(priceMatch[1]) : 0
+    const availability = get('product:availability') || 'instock'
+    const instock = availability.toLowerCase().includes('instock')
+    return {
+      title: get('og:title'),
+      image: get('og:image'),
+      price,
+      instock,
+    }
   } catch { return null }
 }
 
@@ -38,7 +45,7 @@ export async function GET(req: NextRequest) {
   }
 
   const db = supabaseAdmin()
-  let added = 0, updated = 0, errors = 0
+  let added = 0, updated = 0, stockMismatch = 0, errors = 0
 
   try {
     const sitemapRes = await fetch('https://smartlivingpakistan.com/product-sitemap.xml')
@@ -50,12 +57,14 @@ export async function GET(req: NextRequest) {
       if (match[1].includes('/product/')) urls.push(match[1])
     }
 
-    const { data: existing } = await db.from('products').select('id, store_url, image_url')
+    const { data: existing } = await db.from('products').select('id, store_url, image_url, stock, sale_price')
     const existingMap = new Map((existing ?? []).map((p: any) => [p.store_url, p]))
+
+    const mismatches: any[] = []
 
     for (const url of urls) {
       try {
-        const og = await getOgData(url)
+        const og = await getProductData(url)
         if (!og || !og.title) { errors++; continue }
 
         const title = og.title.replace(/\s*[-|].*$/, '').trim()
@@ -67,6 +76,30 @@ export async function GET(req: NextRequest) {
           if (og.image && !(found as any).image_url?.startsWith('data:')) {
             updateData.image_url = og.image
           }
+          updateData.sale_price = og.price || (found as any).sale_price
+
+          // Stock mismatch check
+          const inventoryStock = (found as any).stock || 0
+          const websiteInstock = og.instock
+
+          if (!websiteInstock && inventoryStock > 0) {
+            stockMismatch++
+            mismatches.push({
+              name: title,
+              inventory_stock: inventoryStock,
+              website_status: 'Out of Stock',
+              url,
+            })
+          } else if (websiteInstock && inventoryStock === 0) {
+            stockMismatch++
+            mismatches.push({
+              name: title,
+              inventory_stock: 0,
+              website_status: 'In Stock',
+              url,
+            })
+          }
+
           await db.from('products').update(updateData).eq('id', (found as any).id)
           updated++
         } else {
@@ -76,7 +109,7 @@ export async function GET(req: NextRequest) {
             sub_category: '',
             sale_price: og.price || 0,
             original_price: 0,
-            stock: 10,
+            stock: og.instock ? 10 : 0,
             notes: '',
             image_url: og.image,
             store_url: url,
@@ -88,7 +121,15 @@ export async function GET(req: NextRequest) {
       } catch { errors++ }
     }
 
-    return NextResponse.json({ ok: true, total: urls.length, added, updated, errors })
+    return NextResponse.json({
+      ok: true,
+      total: urls.length,
+      added,
+      updated,
+      errors,
+      stock_mismatches: stockMismatch,
+      mismatches,
+    })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }
