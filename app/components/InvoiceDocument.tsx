@@ -21,7 +21,7 @@ export default function InvoiceDocument({ invoice, items, viewUrl, paymentQrUrl 
         <div className="flex items-center gap-3">
           {invoice.company_logo_url
             ? <img src={invoice.company_logo_url} alt="Company logo" className="w-14 h-14 rounded-xl object-cover border" style={{ borderColor:'#E4E2DC' }}/>
-            : <div className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl" style={{ background:'#E8F1FB' }}>🏬</div>
+            : <img src="https://smartlivingpakistan.com/wp-content/uploads/2025/07/New-logo-Smart-Living-Pakistan-mobile-7.png.webp" alt="SLP" className="w-14 h-14 rounded-xl object-contain"/>
           }
           <div>
             <div className="text-lg font-bold">Smart Living Pakistan</div>
