@@ -184,16 +184,16 @@ export default function NewInvoicePage() {
         <Card title="Invoice Details">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <Field label="Order ID">
-              <input className={inp} value={orderId} onChange={e => setOrderId(e.target.value)} placeholder="ORD-1029"/>
+              <input className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={orderId} onChange={e => setOrderId(e.target.value)} placeholder="ORD-1029"/>
             </Field>
             <Field label="Invoice Date">
-              <input type="date" className={inp} value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)}/>
+              <input type="date" className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)}/>
             </Field>
             <Field label="Due Date">
-              <input type="date" className={inp} value={dueDate} onChange={e => setDueDate(e.target.value)}/>
+              <input type="date" className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={dueDate} onChange={e => setDueDate(e.target.value)}/>
             </Field>
             <Field label="Payment Status">
-              <select className={inp} value={paymentStatus} onChange={e => setPaymentStatus(e.target.value as any)}>
+              <select className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={paymentStatus} onChange={e => setPaymentStatus(e.target.value as any)}>
                 <option>Unpaid</option><option>Paid</option><option>Partial</option><option>Refunded</option>
               </select>
             </Field>
@@ -204,17 +204,17 @@ export default function NewInvoicePage() {
         <Card title="Customer Information">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Customer Name *">
-              <input className={inp} value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Full name"/>
+              <input className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Full name"/>
             </Field>
             <Field label="Email">
-              <input type="email" className={inp} value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="customer@example.com"/>
+              <input type="email" className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="customer@example.com"/>
             </Field>
             <Field label="Phone Number">
-              <input type="tel" className={inp} value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="+92 300 1234567"/>
+              <input type="tel" className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="+92 300 1234567"/>
             </Field>
             <div/>
             <Field label="Billing Address" full>
-              <textarea className={inp} rows={2} value={billingAddress} onChange={e => setBillingAddress(e.target.value)} placeholder="Street, city, postal code"/>
+              <textarea className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} rows={2} value={billingAddress} onChange={e => setBillingAddress(e.target.value)} placeholder="Street, city, postal code"/>
             </Field>
             <Field label="Shipping Address" full>
               <label className="flex items-center gap-2 text-xs mb-1.5" style={{ color:'#6B6A66' }}>
@@ -222,7 +222,7 @@ export default function NewInvoicePage() {
                 Same as billing address
               </label>
               {!sameAsShipping && (
-                <textarea className={inp} rows={2} value={shippingAddress} onChange={e => setShippingAddress(e.target.value)} placeholder="Street, city, postal code"/>
+                <textarea className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} rows={2} value={shippingAddress} onChange={e => setShippingAddress(e.target.value)} placeholder="Street, city, postal code"/>
               )}
             </Field>
           </div>
@@ -251,23 +251,20 @@ export default function NewInvoicePage() {
                   )}
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  <MiniField label="SKU">
-                    <input className={inp} value={it.sku} onChange={e => updateItem(idx, { sku: e.target.value })}/>
-                  </MiniField>
                   <MiniField label="Qty">
-                    <input type="number" min="0" step="1" className={inp} value={it.quantity}
+                    <input type="number" min="0" step="1" className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={it.quantity}
                       onChange={e => updateItem(idx, { quantity: parseFloat(e.target.value) || 0 })}/>
                   </MiniField>
                   <MiniField label="Unit Price">
-                    <input type="number" min="0" className={inp} value={it.unit_price}
+                    <input type="number" min="0" className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={it.unit_price}
                       onChange={e => updateItem(idx, { unit_price: parseFloat(e.target.value) || 0 })}/>
                   </MiniField>
                   <MiniField label="Discount">
-                    <input type="number" min="0" className={inp} value={it.discount}
+                    <input type="number" min="0" className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={it.discount}
                       onChange={e => updateItem(idx, { discount: parseFloat(e.target.value) || 0 })}/>
                   </MiniField>
                   <MiniField label="Tax %">
-                    <input type="number" min="0" className={inp} value={it.tax_pct}
+                    <input type="number" min="0" className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={it.tax_pct}
                       onChange={e => updateItem(idx, { tax_pct: parseFloat(e.target.value) || 0 })}/>
                   </MiniField>
                 </div>
@@ -288,16 +285,16 @@ export default function NewInvoicePage() {
         <Card title="Pricing Summary">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
             <Field label="Shipping Charges">
-              <input type="number" min="0" className={inp} value={shippingCharges} onChange={e => setShippingCharges(e.target.value)}/>
+              <input type="number" min="0" className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={shippingCharges} onChange={e => setShippingCharges(e.target.value)}/>
             </Field>
             <Field label="Delivery Tax">
-              <input type="number" min="0" className={inp} value={deliveryTax} onChange={e => setDeliveryTax(e.target.value)}/>
+              <input type="number" min="0" className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={deliveryTax} onChange={e => setDeliveryTax(e.target.value)}/>
             </Field>
             <Field label="Extra Discount">
-              <input type="number" min="0" className={inp} value={extraDiscount} onChange={e => setExtraDiscount(e.target.value)}/>
+              <input type="number" min="0" className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={extraDiscount} onChange={e => setExtraDiscount(e.target.value)}/>
             </Field>
             <Field label="Currency">
-              <select className={inp} value={currency} onChange={e => setCurrency(e.target.value)}>
+              <select className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={currency} onChange={e => setCurrency(e.target.value)}>
                 <option value="PKR">PKR (₨)</option>
                 <option value="USD">USD ($)</option>
               </select>
@@ -320,19 +317,19 @@ export default function NewInvoicePage() {
         <Card title="Payment Information">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <Field label="Payment Method">
-              <select className={inp} value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as any)}>
+              <select className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as any)}>
                 <option value="">Not specified</option>
                 <option>Card</option><option>Bank</option><option>COD</option><option>Wallet</option>
               </select>
             </Field>
             <Field label="Transaction ID">
-              <input className={inp} value={transactionId} onChange={e => setTransactionId(e.target.value)}/>
+              <input className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={transactionId} onChange={e => setTransactionId(e.target.value)}/>
             </Field>
             <Field label="Payment Date">
-              <input type="date" className={inp} value={paymentDate} onChange={e => setPaymentDate(e.target.value)}/>
+              <input type="date" className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={paymentDate} onChange={e => setPaymentDate(e.target.value)}/>
             </Field>
             <Field label="Amount Paid (partial OK)">
-              <input type="number" min="0" className={inp} value={amountPaid} onChange={e => setAmountPaid(e.target.value)}/>
+              <input type="number" min="0" className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={amountPaid} onChange={e => setAmountPaid(e.target.value)}/>
             </Field>
           </div>
         </Card>
@@ -341,13 +338,13 @@ export default function NewInvoicePage() {
         <Card title="Shipping Details">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Field label="Courier Name">
-              <input className={inp} value={courierName} onChange={e => setCourierName(e.target.value)} placeholder="TCS, Leopards, M&P…"/>
+              <input className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={courierName} onChange={e => setCourierName(e.target.value)} placeholder="TCS, Leopards, M&P…"/>
             </Field>
             <Field label="Tracking Number">
-              <input className={inp} value={trackingNumber} onChange={e => setTrackingNumber(e.target.value)}/>
+              <input className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={trackingNumber} onChange={e => setTrackingNumber(e.target.value)}/>
             </Field>
             <Field label="Delivery Status">
-              <select className={inp} value={deliveryStatus} onChange={e => setDeliveryStatus(e.target.value)}>
+              <select className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={deliveryStatus} onChange={e => setDeliveryStatus(e.target.value)}>
                 <option>Pending</option><option>Shipped</option><option>Out for Delivery</option>
                 <option>Delivered</option><option>Returned</option>
               </select>
@@ -357,7 +354,7 @@ export default function NewInvoicePage() {
 
         {/* ── NOTES ── */}
         <Card title="Notes / Terms & Conditions">
-          <textarea className={inp} rows={3} value={notes} onChange={e => setNotes(e.target.value)}
+          <textarea className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} rows={3} value={notes} onChange={e => setNotes(e.target.value)}
             placeholder="e.g. Goods once sold cannot be returned. Warranty void if seal broken."/>
         </Card>
 
