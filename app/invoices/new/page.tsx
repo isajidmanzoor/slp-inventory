@@ -252,19 +252,19 @@ export default function NewInvoicePage() {
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                   <MiniField label="Qty">
-                    <input type="number" min="0" step="1" className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={it.quantity}
+                    <input type="number" min="0" step="1" className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={it.quantity || ''}
                       onChange={e => updateItem(idx, { quantity: parseFloat(e.target.value) || 0 })}/>
                   </MiniField>
                   <MiniField label="Unit Price">
-                    <input type="number" min="0" className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={it.unit_price}
+                    <input type="number" min="0" className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={it.unit_price || ''}
                       onChange={e => updateItem(idx, { unit_price: parseFloat(e.target.value) || 0 })}/>
                   </MiniField>
                   <MiniField label="Discount">
-                    <input type="number" min="0" className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={it.discount}
+                    <input type="number" min="0" className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={it.discount || ''}
                       onChange={e => updateItem(idx, { discount: parseFloat(e.target.value) || 0 })}/>
                   </MiniField>
                   <MiniField label="Tax %">
-                    <input type="number" min="0" className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={it.tax_pct}
+                    <input type="number" min="0" className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={it.tax_pct || ''}
                       onChange={e => updateItem(idx, { tax_pct: parseFloat(e.target.value) || 0 })}/>
                   </MiniField>
                 </div>
