@@ -63,8 +63,10 @@ export default function InventoryPage() {
   const [toast,      setToast]      = useState<{msg:string;type:'ok'|'err'}|null>(null)
   const [userMenu,   setUserMenu]   = useState(false)
   const [lowStockBannerDismissed, setLowStockBannerDismissed] = useState(false)
-  const [alertSettingsCollapsed,  setAlertSettingsCollapsed]  = useState(false)
   const [bellPanel, setBellPanel] = useState<Product|null>(null)
+  const [notifOpen, setNotifOpen] = useState(false)
+  const [notifRinging, setNotifRinging] = useState(false)
+  const prevLowCountRef = useRef(0)
   const [bellThreshold, setBellThreshold] = useState<string>('')
   const [bellSaving, setBellSaving] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -106,6 +108,13 @@ export default function InventoryPage() {
   useEffect(() => {
     if (!authLoading) fetchProfile()
   }, [authLoading])
+
+  // Auto-sync profile email with the authenticated user's email
+  useEffect(() => {
+    if (!authLoading && user?.email && !profileEmail) {
+      setProfileEmail(user.email)
+    }
+  }, [authLoading, user, profileEmail])
 
   async function fetchProfile() {
     setProfileLoading(true)
@@ -209,15 +218,19 @@ export default function InventoryPage() {
   }
 
   async function sendLowStockEmail(products: Product[]) {
-    if (!profileEmail) return
-    const lowProducts = products.filter(p => p.alert_enabled && p.stock > 0 && p.stock <= lowStockThreshold)
+    const targetEmail = user?.email || profileEmail
+    if (!targetEmail) return
+    const lowProducts = products.filter(p => p.alert_enabled && p.stock > 0 && p.stock <= effectiveThreshold(p))
     if (lowProducts.length === 0) return
+    const key = lowProducts.map(p => p.id).sort().join(',')
+    if (key === lastNotifiedKeyRef.current) return
+    lastNotifiedKeyRef.current = key
 
     try {
       await fetch('/api/notify-low-stock', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: profileEmail, threshold: lowStockThreshold, products: lowProducts }),
+        body: JSON.stringify({ email: targetEmail, threshold: lowStockThreshold, products: lowProducts }),
       })
     } catch {
       // ignore notification failure; only show data in app
@@ -318,6 +331,7 @@ export default function InventoryPage() {
 
   // Re-show the low-stock banner if the alert count goes up after being dismissed
   const prevAlertCountRef = useRef(0)
+  const lastNotifiedKeyRef = useRef<string>('')
   useEffect(() => {
     const count = lowCount + outCount
     if (count > prevAlertCountRef.current) setLowStockBannerDismissed(false)
@@ -540,7 +554,16 @@ export default function InventoryPage() {
 
   return (
     <div style={{ minHeight:'100vh', background:'#F5F4F0', fontFamily:'-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif' }}
-      onClick={() => userMenu && setUserMenu(false)}>
+      onClick={() => { userMenu && setUserMenu(false); notifOpen && setNotifOpen(false) }}>
+      <style>{`
+        @keyframes bell-ring {
+          0%, 100% { transform: rotate(0deg); }
+          10%, 30% { transform: rotate(-12deg); }
+          20%, 40% { transform: rotate(12deg); }
+          50% { transform: rotate(0deg); }
+        }
+        .animate-bell-ring { animation: bell-ring 0.6s ease-in-out 2; transform-origin: top center; }
+      `}</style>
 
       {/* TOAST */}
       {toast && (
@@ -838,22 +861,68 @@ export default function InventoryPage() {
             style={{ borderColor:'#E4E2DC', color:'#6B6A66' }} title="Refresh">
             <RefreshCw size={14}/>
           </button>
-          <button onClick={() => setAlertSettingsCollapsed(v => !v)}
-            className="w-8 h-8 rounded-lg border flex items-center justify-center relative"
-            style={{
-              borderColor: alertSettingsCollapsed ? '#E4E2DC' : '#B8D4F5',
-              background:  alertSettingsCollapsed ? 'white' : '#E8F1FB',
-              color:       alertSettingsCollapsed ? '#6B6A66' : '#1A5FA8',
-            }}
-            title={alertSettingsCollapsed ? 'Show alert settings' : 'Hide alert settings'}>
-            <Bell size={14}/>
-            {(lowCount + outCount) > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center text-white"
-                style={{ background:'#9B2B2B' }}>
-                {Math.min(lowCount + outCount, 9)}
-              </span>
+          {/* NOTIFICATION BELL */}
+          <div style={{ position:'relative' }}>
+            <button onClick={e => { e.stopPropagation(); setNotifOpen(o => !o) }}
+              className="w-8 h-8 rounded-lg border flex items-center justify-center relative"
+              style={{
+                borderColor: (lowCount+outCount) > 0 ? '#F5C0C0' : '#E4E2DC',
+                background:  (lowCount+outCount) > 0 ? '#FFF5F5' : 'white',
+                color:       (lowCount+outCount) > 0 ? '#9B2B2B' : '#6B6A66',
+              }}
+              title="Notifications">
+              <Bell size={14} className={notifRinging ? 'animate-bell-ring' : ''}/>
+              {(lowCount + outCount) > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center text-white"
+                  style={{ background:'#9B2B2B' }}>
+                  {Math.min(lowCount + outCount, 9)}
+                </span>
+              )}
+            </button>
+            {notifOpen && (
+              <div className="absolute right-0 top-10 bg-white border rounded-xl shadow-xl z-50 w-80 max-h-96 overflow-hidden flex flex-col"
+                style={{ borderColor:'#E4E2DC' }}
+                onClick={e => e.stopPropagation()}>
+                <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor:'#F0EEE8' }}>
+                  <div className="text-sm font-bold" style={{ color:'#1C1B19' }}>Notifications</div>
+                  {(lowCount+outCount) > 0 && (
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background:'#FFEBED', color:'#9B2B2B' }}>
+                      {lowCount+outCount} alert{lowCount+outCount===1?'':'s'}
+                    </span>
+                  )}
+                </div>
+                <div className="overflow-y-auto flex-1">
+                  {(lowCount + outCount) === 0 ? (
+                    <div className="px-4 py-8 text-center">
+                      <CheckCircle2 size={28} style={{ color:'#0D6E4F', margin:'0 auto 8px' }}/>
+                      <div className="text-xs" style={{ color:'#9C9B97' }}>All products are well stocked</div>
+                    </div>
+                  ) : (
+                    products
+                      .filter(p => p.alert_enabled && (p.stock === 0 || p.stock <= effectiveThreshold(p)))
+                      .sort((a,b) => a.stock - b.stock)
+                      .map(p => (
+                        <button key={p.id}
+                          onClick={() => { setNotifOpen(false); setBellPanel(p); setBellThreshold(typeof (p as any).custom_threshold === 'number' ? String((p as any).custom_threshold) : '') }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 border-b text-left hover:bg-gray-50"
+                          style={{ borderColor:'#F5F4F0' }}>
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                            style={{ background: p.stock===0 ? '#FDEAEA' : '#FDF0DC', color: p.stock===0 ? '#9B2B2B' : '#8A4D0B' }}>
+                            {p.stock===0 ? <PackageX size={14}/> : <AlertTriangle size={14}/>}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-semibold truncate" style={{ color:'#1C1B19' }}>{p.name}</div>
+                            <div className="text-[11px]" style={{ color: p.stock===0 ? '#9B2B2B' : '#8A4D0B' }}>
+                              {p.stock===0 ? 'Out of stock' : `Only ${p.stock} left (limit: ${effectiveThreshold(p)})`}
+                            </div>
+                          </div>
+                        </button>
+                      ))
+                  )}
+                </div>
+              </div>
             )}
-          </button>
+          </div>
           <div className="flex border rounded-lg overflow-hidden" style={{ borderColor:'#E4E2DC' }}>
             {(['grid','list'] as const).map(v => (
               <button key={v} onClick={() => setView(v)}
@@ -909,62 +978,6 @@ export default function InventoryPage() {
       </header>
 
       <div className="max-w-screen-xl mx-auto px-4">
-        {/* ALERT SETTINGS */}
-        {!alertSettingsCollapsed && (
-        <div className="relative bg-white rounded-3xl border p-4 sm:p-5 shadow-sm mb-4 pr-12"
-          style={{ borderColor:'#E4E2DC' }}>
-          <button
-            onClick={() => setAlertSettingsCollapsed(true)}
-            aria-label="Hide alert settings"
-            title="Hide this panel (use the bell icon in the header to bring it back)"
-            className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100"
-            style={{ color:'#9C9B97' }}>
-            <X size={15}/>
-          </button>
-          <div className="flex flex-col sm:flex-row sm:items-end gap-3">
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold" style={{ color:'#1C1B19' }}>Low stock alert settings</div>
-              <div className="text-xs mt-1" style={{ color:'#6B6A66' }}>
-                Get alerted inside the app and by email when stock falls below your limit.
-              </div>
-            </div>
-            <button onClick={handleSaveProfile}
-              disabled={profileSaving}
-              className="h-9 px-4 rounded-lg text-sm font-semibold text-white"
-              style={{ background: profileSaving ? '#7FA8D0' : '#1A5FA8' }}>
-              {profileSaving ? 'Saving…' : 'Save alert settings'}
-            </button>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
-            <label className="text-xs font-semibold text-slate-700">
-              Notification email
-              <input type="email" value={profileEmail}
-                onChange={e => setProfileEmail(e.target.value)}
-                className="mt-2 w-full h-10 px-3 rounded-xl border text-sm outline-none"
-                style={{ borderColor:'#E4E2DC' }}
-                placeholder="you@example.com" />
-            </label>
-            <label className="text-xs font-semibold text-slate-700">
-              Low stock threshold
-              <input type="number" min={1} value={lowStockThreshold}
-                onChange={e => setLowStockThreshold(parseInt(e.target.value) || 1)}
-                className="mt-2 w-full h-10 px-3 rounded-xl border text-sm outline-none"
-                style={{ borderColor:'#E4E2DC' }}
-                placeholder="5" />
-            </label>
-            <div className="text-xs text-slate-600 leading-relaxed">
-              Your current alert threshold is <strong>{lowStockThreshold}</strong>. Products with stock at or below this value will be marked low stock and included in email alerts.
-            </div>
-            {!profileSchemaReady && (
-              <div className="rounded-2xl border border-[#F5D58F] bg-[#FFFAEB] p-3 text-sm mt-3"
-                style={{ color:'#8A5F0B' }}>
-                Low stock threshold persistence is unavailable in your database schema. Add `low_stock_threshold` to `profiles` to make this setting permanent.
-              </div>
-            )}
-          </div>
-        </div>
-        )}
-
         {/* STATS */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-4">
           {[
