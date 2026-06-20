@@ -1015,6 +1015,15 @@ export default function InventoryPage() {
                   {syncing ? <RefreshCw size={13} className="animate-spin"/> : <RefreshCcw size={13}/>}
                   {syncing ? 'Syncing store…' : 'Sync from Store'}
                 </button>
+                <a href="/users" className="w-full flex items-center gap-2 px-3 py-2.5 text-xs hover:bg-gray-50 border-t"
+                  style={{ color:'#3E3D3A', borderColor:'#F0EEE8' }}>
+                  <Users size={13}/> Manage Users
+                </a>
+                <button onClick={() => { setUserMenu(false); setDeleteAccountOpen(true) }}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-xs hover:bg-red-50 border-t"
+                  style={{ color:'#9B2B2B', borderColor:'#F0EEE8' }}>
+                  <UserX size={13}/> Delete My Account
+                </button>
                 <button onClick={handleSignOut}
                   className="w-full flex items-center gap-2 px-3 py-2.5 text-xs hover:bg-red-50"
                   style={{ color:'#9B2B2B' }}>
