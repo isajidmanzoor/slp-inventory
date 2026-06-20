@@ -64,6 +64,9 @@ export default function InventoryPage() {
   const [userMenu,   setUserMenu]   = useState(false)
   const [lowStockBannerDismissed, setLowStockBannerDismissed] = useState(false)
   const [alertSettingsCollapsed,  setAlertSettingsCollapsed]  = useState(false)
+  const [bellPanel, setBellPanel] = useState<Product|null>(null)
+  const [bellThreshold, setBellThreshold] = useState<string>('')
+  const [bellSaving, setBellSaving] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const imgDataRef = useRef<string|null>(null)
 
@@ -273,7 +276,7 @@ export default function InventoryPage() {
       let inStat = true
       if (activeStat === 'instock') inStat = p.stock > 0
       else if (activeStat === 'value') inStat = p.sale_price * p.stock > 0
-      else if (activeStat === 'lowstock') inStat = p.stock === 0 || (p.stock > 0 && p.stock <= lowStockThreshold)
+      else if (activeStat === 'lowstock') inStat = p.stock === 0 || (p.stock > 0 && p.stock <= effectiveThreshold(p))
       
       return inCat && inQ && inStat
     })
@@ -294,6 +297,12 @@ export default function InventoryPage() {
     return r
   }
 
+  function effectiveThreshold(p: Product) {
+    return (typeof (p as any).custom_threshold === 'number' && (p as any).custom_threshold !== null)
+      ? (p as any).custom_threshold
+      : lowStockThreshold
+  }
+
   const data       = filtered()
   const totalPages = Math.max(1, Math.ceil(data.length / PER))
   const curPage    = Math.min(page, totalPages)
@@ -301,7 +310,7 @@ export default function InventoryPage() {
 
   const totalStock = products.reduce((s,p) => s + p.stock, 0)
   const stockValue = products.reduce((s,p) => s + p.sale_price * p.stock, 0)
-  const lowCount   = products.filter(p => p.alert_enabled && p.stock > 0 && p.stock <= lowStockThreshold).length
+  const lowCount   = products.filter(p => p.alert_enabled && p.stock > 0 && p.stock <= effectiveThreshold(p)).length
   const outCount   = products.filter(p => p.alert_enabled && p.stock === 0).length
   const valStr     = stockValue >= 1_000_000 ? (stockValue/1_000_000).toFixed(1)+'M'
                    : stockValue >= 1000       ? (stockValue/1000).toFixed(0)+'K'
@@ -410,7 +419,6 @@ export default function InventoryPage() {
 
   async function toggleAlert(p: Product) {
     const next = !p.alert_enabled
-    // optimistic update
     setProducts(prev => prev.map(x => x.id === p.id ? { ...x, alert_enabled: next } : x))
     try {
       const { error } = await supabase
@@ -418,22 +426,54 @@ export default function InventoryPage() {
         .update({ alert_enabled: next })
         .eq('id', p.id)
       if (error) throw new Error(error.message)
-      showToast(next ? `🔔 Alerts on for "${p.name}"` : `🔕 Alerts muted for "${p.name}"`)
+      showToast(next ? `Alerts on for "${p.name}"` : `Alerts muted for "${p.name}"`)
     } catch (e: any) {
-      // revert on failure
       setProducts(prev => prev.map(x => x.id === p.id ? { ...x, alert_enabled: !next } : x))
       showToast(e.message || 'Could not update alert', 'err')
     }
   }
 
-  function StockBadge({ stock }: { stock: number }) {
+  async function saveBellSettings() {
+    if (!bellPanel) return
+    setBellSaving(true)
+    const trimmed = bellThreshold.trim()
+    const parsedThreshold = trimmed === '' ? null : Math.max(0, parseInt(trimmed) || 0)
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ custom_threshold: parsedThreshold })
+        .eq('id', bellPanel.id)
+      if (error) throw new Error(error.message)
+      setProducts(prev => prev.map(x => x.id === bellPanel.id ? { ...x, custom_threshold: parsedThreshold } as any : x))
+      showToast('✅ Alert settings saved for "' + bellPanel.name + '"')
+      setBellPanel(null)
+    } catch (e: any) {
+      showToast(e.message || 'Could not save alert settings', 'err')
+    }
+    setBellSaving(false)
+  }
+
+  async function toggleBellPanelAlert() {
+    if (!bellPanel) return
+    const next = !bellPanel.alert_enabled
+    setBellPanel({ ...bellPanel, alert_enabled: next })
+    setProducts(prev => prev.map(x => x.id === bellPanel.id ? { ...x, alert_enabled: next } : x))
+    try {
+      const { error } = await supabase.from('products').update({ alert_enabled: next }).eq('id', bellPanel.id)
+      if (error) throw new Error(error.message)
+    } catch (e: any) {
+      showToast(e.message || 'Could not update alert', 'err')
+    }
+  }
+
+  function StockBadge({ stock, threshold }: { stock: number; threshold: number }) {
     if (stock === 0) return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
         style={{ background:'#FDEAEA', color:'#9B2B2B' }}>
         <PackageX size={11}/> Out of stock
       </span>
     )
-    if (stock <= lowStockThreshold) return (
+    if (stock <= threshold) return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
         style={{ background:'#FDF0DC', color:'#8A4D0B' }}>
         <AlertTriangle size={11}/> Low: {stock}
@@ -545,6 +585,94 @@ export default function InventoryPage() {
               <button onClick={handleDelete}
                 className="px-4 h-9 rounded-lg text-sm font-bold text-white"
                 style={{ background:'#9B2B2B' }}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BELL ALERT PANEL */}
+      {bellPanel && (
+        <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center sm:p-4"
+          style={{ background:'rgba(0,0,0,0.48)' }}
+          onClick={e => { if (e.target===e.currentTarget) setBellPanel(null) }}>
+          <div className="bg-white w-full max-w-sm rounded-t-2xl sm:rounded-2xl shadow-2xl p-5">
+            <div className="flex items-start justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: bellPanel.alert_enabled ? '#E8F1FB' : '#F5F4F0', color: bellPanel.alert_enabled ? '#1A5FA8' : '#9C9B97' }}>
+                  {bellPanel.alert_enabled ? <Bell size={16}/> : <BellOff size={16}/>}
+                </div>
+                <div>
+                  <div className="text-sm font-bold" style={{ color:'#1C1B19' }}>Alert Settings</div>
+                  <div className="text-[11px]" style={{ color:'#9C9B97' }}>Per-product configuration</div>
+                </div>
+              </div>
+              <button onClick={() => setBellPanel(null)}
+                className="w-7 h-7 rounded-lg border flex items-center justify-center flex-shrink-0"
+                style={{ borderColor:'#E4E2DC', color:'#6B6A66' }}><X size={14}/></button>
+            </div>
+
+            <div className="text-xs font-semibold mt-3 mb-3 leading-snug" style={{ color:'#3E3D3A' }}>
+              {bellPanel.name}
+            </div>
+
+            <div className="rounded-xl p-3 mb-4 flex items-center justify-between"
+              style={{ background:'#F5F4F0' }}>
+              <div>
+                <div className="text-xs font-semibold" style={{ color:'#1C1B19' }}>Alerts for this product</div>
+                <div className="text-[11px]" style={{ color:'#9C9B97' }}>
+                  {bellPanel.alert_enabled ? 'Currently ON — you will be notified' : 'Currently OFF — no notifications'}
+                </div>
+              </div>
+              <button
+                onClick={toggleBellPanelAlert}
+                type="button"
+                aria-pressed={bellPanel.alert_enabled}
+                className="relative flex-shrink-0"
+                style={{ width:44, height:26, borderRadius:13, background: bellPanel.alert_enabled ? '#1A5FA8' : '#D3D1C7', transition:'background .15s', border:'none', cursor:'pointer' }}>
+                <span style={{
+                  position:'absolute', top:3, left: bellPanel.alert_enabled ? 21 : 3,
+                  width:20, height:20, borderRadius:10, background:'white',
+                  transition:'left .15s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)',
+                }}/>
+              </button>
+            </div>
+
+            <label className="block text-xs font-semibold mb-1.5" style={{ color:'#3E3D3A' }}>
+              Custom low-stock threshold
+            </label>
+            <input
+              type="number"
+              min={0}
+              placeholder={`Default: ${lowStockThreshold} (leave blank to use default)`}
+              value={bellThreshold}
+              onChange={e => setBellThreshold(e.target.value)}
+              disabled={!bellPanel.alert_enabled}
+              className={inp}
+              style={{ borderColor:'#E4E2DC', opacity: bellPanel.alert_enabled ? 1 : 0.5 }}
+            />
+            <p className="text-[11px] mt-1.5 mb-4" style={{ color:'#9C9B97' }}>
+              You'll be alerted when stock for this product falls to or below this number.
+              Leave blank to use the global default ({lowStockThreshold}).
+            </p>
+
+            <div className="rounded-xl p-3 mb-4" style={{ background:'#F5F4F0' }}>
+              <div className="text-[11px]" style={{ color:'#6B6A66' }}>Current stock</div>
+              <div className="text-lg font-bold mt-0.5" style={{ color: bellPanel.stock===0 ? '#9B2B2B' : '#1C1B19' }}>
+                {bellPanel.stock} units
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button onClick={() => setBellPanel(null)}
+                className="flex-1 h-10 rounded-lg border text-sm font-medium"
+                style={{ borderColor:'#E4E2DC', color:'#3E3D3A' }}>Cancel</button>
+              <button onClick={saveBellSettings} disabled={bellSaving}
+                className="flex-1 h-10 rounded-lg text-sm font-bold text-white flex items-center justify-center gap-2"
+                style={{ background: bellSaving ? '#7FA8D0' : '#1A5FA8' }}>
+                {bellSaving && <RefreshCw size={13} className="animate-spin"/>}
+                {bellSaving ? 'Saving…' : 'Save'}
+              </button>
             </div>
           </div>
         </div>
@@ -960,7 +1088,7 @@ export default function InventoryPage() {
                       <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
                         style={{ background:'#1A5FA8' }}>-{d}%</div>
                     )}
-                    {(p.stock === 0 || p.stock <= lowStockThreshold) && p.alert_enabled && (
+                    {(p.stock === 0 || p.stock <= effectiveThreshold(p)) && p.alert_enabled && (
                       <div className="absolute top-2 left-2 w-7 h-7 rounded-full bg-white/95 border flex items-center justify-center"
                         style={{ borderColor:'#F5C0C0', color:'#9B2B2B' }}
                         title="Low stock — alert active">
@@ -968,7 +1096,7 @@ export default function InventoryPage() {
                       </div>
                     )}
                     <button
-                      onClick={(e) => { e.stopPropagation(); toggleAlert(p) }}
+                      onClick={(e) => { e.stopPropagation(); setBellPanel(p); setBellThreshold(typeof (p as any).custom_threshold === 'number' ? String((p as any).custom_threshold) : '') }}
                       type="button"
                       className="absolute bottom-2 left-2 w-7 h-7 rounded-full border flex items-center justify-center transition-colors"
                       style={{
@@ -976,9 +1104,8 @@ export default function InventoryPage() {
                         borderColor: p.alert_enabled ? '#E4E2DC' : 'transparent',
                         color: p.alert_enabled ? '#1A5FA8' : '#fff',
                       }}
-                      title={p.alert_enabled ? 'Mute low-stock alerts for this product' : 'Unmute low-stock alerts for this product'}
-                      aria-pressed={p.alert_enabled}
-                      aria-label={p.alert_enabled ? 'Mute alerts' : 'Unmute alerts'}>
+                      title="Configure low-stock alert for this product"
+                      aria-label="Configure alert">
                       {p.alert_enabled ? <Bell size={13}/> : <BellOff size={13}/>}
                     </button>
                     {(p as any).woo_id && (
@@ -1026,7 +1153,7 @@ export default function InventoryPage() {
                       )}
                     </div>
                     <div className="border-t pt-1.5 mt-auto" style={{ borderColor:'#F0EEE8' }}>
-                      <StockBadge stock={p.stock}/>
+                      <StockBadge stock={p.stock} threshold={effectiveThreshold(p)}/>
                     </div>
                   </div>
                 </div>
@@ -1060,14 +1187,14 @@ export default function InventoryPage() {
                       <td className="px-3 py-2">
                         <div className="font-semibold text-xs leading-snug flex flex-wrap items-center gap-1">
                           {p.name}
-                          {(p.stock === 0 || p.stock <= lowStockThreshold) && p.alert_enabled && (
+                          {(p.stock === 0 || p.stock <= effectiveThreshold(p)) && p.alert_enabled && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
                               style={{ background:'#FFEBED', color:'#9B2B2B' }}>
                               <Bell size={12}/> Low stock
                             </span>
                           )}
                           <button
-                            onClick={(e) => { e.stopPropagation(); toggleAlert(p) }}
+                            onClick={(e) => { e.stopPropagation(); setBellPanel(p); setBellThreshold(typeof (p as any).custom_threshold === 'number' ? String((p as any).custom_threshold) : '') }}
                             type="button"
                             className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border"
                             style={{
@@ -1075,7 +1202,7 @@ export default function InventoryPage() {
                               color: p.alert_enabled ? '#1A5FA8' : '#9C9B97',
                               background: p.alert_enabled ? '#fff' : '#F5F4F0',
                             }}
-                            title={p.alert_enabled ? 'Mute alerts for this product' : 'Unmute alerts for this product'}>
+                            title="Configure alert for this product">
                             {p.alert_enabled ? <Bell size={11}/> : <BellOff size={11}/>}
                           </button>
                           {(p as any).woo_id && <Wifi size={10} color="#085041" aria-label="Synced"/>}
@@ -1103,7 +1230,7 @@ export default function InventoryPage() {
                               style={{ background:'#E8F1FB', color:'#1A5FA8' }}>-{d}%</span>
                           : '—'}
                       </td>
-                      <td className="px-3 py-2"><StockBadge stock={p.stock}/></td>
+                      <td className="px-3 py-2"><StockBadge stock={p.stock} threshold={effectiveThreshold(p)}/></td>
                       <td className="px-3 py-2 text-center">
                         <button onClick={() => openEdit(p)}
                           className="w-7 h-7 rounded-md border inline-flex items-center justify-center mr-1"

@@ -42,6 +42,7 @@ export type Product = {
   image_url: string | null
   store_url?: string | null
   alert_enabled: boolean
+  custom_threshold?: number | null
   woo_id?: number | null
   last_synced_at?: string | null
   created_at?: string

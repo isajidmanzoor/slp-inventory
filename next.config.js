@@ -2,9 +2,12 @@
 const nextConfig = {
   images: {
     remotePatterns: [
-      { protocol: 'https', hostname: 'smartlivingpakistan.com' },
-      { protocol: 'https', hostname: '*.supabase.co' },
-    ]
-  }
-}
-module.exports = nextConfig
+      {
+        protocol: 'https',
+        hostname: 'smartlivingpakistan.com',
+      },
+    ],
+  },
+};
+
+module.exports = nextConfig;
