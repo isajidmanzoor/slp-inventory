@@ -6,7 +6,8 @@ import {
   Search, LayoutGrid, List, Plus, Pencil, Trash2,
   PackageX, AlertTriangle, CheckCircle2, Bell, BellOff,
   X, Upload, RefreshCw, Package, Tag, DollarSign,
-  LogOut, RefreshCcw, Wifi, WifiOff, User, ExternalLink, FileText,
+  LogOut, RefreshCcw, Wifi, WifiOff, User, ExternalLink,
+  Users, UserX, FileText,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Product } from '@/lib/supabase'
@@ -64,6 +65,8 @@ export default function InventoryPage() {
   const [userMenu,   setUserMenu]   = useState(false)
   const [lowStockBannerDismissed, setLowStockBannerDismissed] = useState(false)
   const [bellPanel, setBellPanel] = useState<Product|null>(null)
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
+  const [deletingAccount, setDeletingAccount] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifRinging, setNotifRinging] = useState(false)
   const prevLowCountRef = useRef(0)
@@ -211,6 +214,27 @@ export default function InventoryPage() {
   async function handleSignOut() {
     await supabase.auth.signOut()
     router.replace('/auth')
+  }
+
+  async function handleDeleteAccount() {
+    if (!user?.id) return
+    setDeletingAccount(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+      const res = await fetch('/api/users', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ userId: user.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not delete account')
+      await supabase.auth.signOut()
+      router.replace('/auth')
+    } catch (e: any) {
+      showToast(e.message || 'Could not delete account', 'err')
+      setDeletingAccount(false)
+    }
   }
 
   function showToast(msg: string, type: 'ok'|'err' = 'ok') {
@@ -608,6 +632,31 @@ export default function InventoryPage() {
               <button onClick={handleDelete}
                 className="px-4 h-9 rounded-lg text-sm font-bold text-white"
                 style={{ background:'#9B2B2B' }}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE ACCOUNT CONFIRM */}
+      {deleteAccountOpen && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-4" style={{ background:'rgba(0,0,0,0.48)' }}
+          onClick={e => { if (e.target===e.currentTarget && !deletingAccount) setDeleteAccountOpen(false) }}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm text-center shadow-2xl">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background:'#FDEAEA' }}>
+              <AlertTriangle size={22} style={{ color:'#9B2B2B' }}/>
+            </div>
+            <h3 className="text-base font-bold mb-1">Delete Your Account?</h3>
+            <p className="text-sm mb-5" style={{ color:'#6B6A66' }}>
+              This will permanently delete your account ({user?.email}) and you will be signed out. This cannot be undone.
+            </p>
+            <div className="flex gap-2 justify-center">
+              <button onClick={() => setDeleteAccountOpen(false)} disabled={deletingAccount}
+                className="px-4 h-10 rounded-lg border text-sm font-medium" style={{ borderColor:'#E4E2DC', color:'#3E3D3A' }}>Cancel</button>
+              <button onClick={handleDeleteAccount} disabled={deletingAccount}
+                className="px-4 h-10 rounded-lg text-sm font-bold text-white flex items-center gap-2" style={{ background: deletingAccount ? '#D88080' : '#9B2B2B' }}>
+                {deletingAccount && <RefreshCw size={13} className="animate-spin"/>}
+                {deletingAccount ? 'Deleting…' : 'Yes, Delete Account'}
+              </button>
             </div>
           </div>
         </div>
