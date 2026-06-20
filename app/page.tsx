@@ -618,7 +618,7 @@ export default function InventoryPage() {
         <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center sm:p-4"
           style={{ background:'rgba(0,0,0,0.48)' }}
           onClick={e => { if (e.target===e.currentTarget) setBellPanel(null) }}>
-          <div className="bg-white w-full max-w-sm rounded-t-2xl sm:rounded-2xl shadow-2xl p-5">
+          <div className="bg-white w-full max-w-sm rounded-t-2xl sm:rounded-2xl shadow-2xl p-5" style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}>
             <div className="flex items-start justify-between mb-1">
               <div className="flex items-center gap-2">
                 <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
@@ -831,15 +831,15 @@ export default function InventoryPage() {
       )}
 
       {/* HEADER */}
-      <header className="sticky top-0 z-30 bg-white border-b flex items-center gap-3 px-4 py-3"
+      <header className="sticky top-0 z-30 bg-white border-b flex items-center gap-1.5 sm:gap-3 px-2 sm:px-4 py-2.5 sm:py-3"
         style={{ borderColor:'#E4E2DC' }}>
-        <div className="w-9 h-9 rounded-lg flex items-center justify-center text-xl flex-shrink-0"
+        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center text-xl flex-shrink-0"
           style={{ background:'#E8F1FB', overflow:'hidden' }}><img src="https://smartlivingpakistan.com/wp-content/uploads/2025/07/New-logo-Smart-Living-Pakistan-mobile-7.png.webp" alt="SLP" style={{height:32,width:'auto'}}/></div>
         <div>
-          <div className="text-sm font-bold leading-tight">Smart Living Pakistan</div>
+          <div className="text-xs sm:text-sm font-bold leading-tight whitespace-nowrap">Smart Living Pakistan</div>
           <div className="text-xs hidden sm:block" style={{ color:'#9C9B97' }}>Inventory Management</div>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-1 sm:gap-2">
           {/* Invoices nav */}
           <a href="/invoices"
             className="hidden sm:flex items-center gap-1.5 px-3 h-8 rounded-lg border text-xs font-semibold"
@@ -857,14 +857,14 @@ export default function InventoryPage() {
             {syncing ? 'Syncing…' : 'Sync Store'}
           </button>
           <button onClick={fetchProducts}
-            className="w-8 h-8 rounded-lg border flex items-center justify-center"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg border flex items-center justify-center flex-shrink-0"
             style={{ borderColor:'#E4E2DC', color:'#6B6A66' }} title="Refresh">
             <RefreshCw size={14}/>
           </button>
           {/* NOTIFICATION BELL */}
           <div style={{ position:'relative' }}>
             <button onClick={e => { e.stopPropagation(); setNotifOpen(o => !o) }}
-              className="w-8 h-8 rounded-lg border flex items-center justify-center relative"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg border flex items-center justify-center relative flex-shrink-0"
               style={{
                 borderColor: (lowCount+outCount) > 0 ? '#F5C0C0' : '#E4E2DC',
                 background:  (lowCount+outCount) > 0 ? '#FFF5F5' : 'white',
@@ -880,7 +880,7 @@ export default function InventoryPage() {
               )}
             </button>
             {notifOpen && (
-              <div className="absolute right-0 top-10 bg-white border rounded-xl shadow-xl z-50 w-80 max-h-96 overflow-hidden flex flex-col"
+              <div className="fixed sm:absolute left-2 right-2 sm:left-auto sm:right-0 top-14 sm:top-10 bg-white border rounded-xl shadow-xl z-50 sm:w-80 max-h-[70vh] sm:max-h-96 overflow-hidden flex flex-col"
                 style={{ borderColor:'#E4E2DC' }}
                 onClick={e => e.stopPropagation()}>
                 <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor:'#F0EEE8' }}>
@@ -923,10 +923,10 @@ export default function InventoryPage() {
               </div>
             )}
           </div>
-          <div className="flex border rounded-lg overflow-hidden" style={{ borderColor:'#E4E2DC' }}>
+          <div className="hidden xs:flex border rounded-lg overflow-hidden flex-shrink-0" style={{ borderColor:'#E4E2DC' }}>
             {(['grid','list'] as const).map(v => (
               <button key={v} onClick={() => setView(v)}
-                className="w-8 h-8 flex items-center justify-center"
+                className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center"
                 style={{ background: view===v ? '#E8F1FB' : 'white',
                          color: view===v ? '#1A5FA8' : '#9C9B97' }}>
                 {v==='grid' ? <LayoutGrid size={14}/> : <List size={14}/>}
@@ -941,12 +941,12 @@ export default function InventoryPage() {
           {/* User menu */}
           <div style={{ position:'relative' }}>
             <button onClick={e => { e.stopPropagation(); setUserMenu(u => !u) }}
-              className="w-9 h-9 rounded-full border flex items-center justify-center"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border flex items-center justify-center flex-shrink-0"
               style={{ borderColor:'#E4E2DC', background:'#E8F1FB', color:'#1A5FA8' }}>
-              <User size={16}/>
+              <User size={15}/>
             </button>
             {userMenu && (
-              <div className="absolute right-0 top-10 bg-white border rounded-xl shadow-xl z-50 w-48 overflow-hidden"
+              <div className="fixed sm:absolute right-2 sm:right-0 left-2 sm:left-auto top-14 sm:top-10 bg-white border rounded-xl shadow-xl z-50 sm:w-48 overflow-hidden"
                 style={{ borderColor:'#E4E2DC' }}
                 onClick={e => e.stopPropagation()}>
                 <div className="px-3 py-2.5 border-b" style={{ borderColor:'#F0EEE8' }}>
@@ -995,17 +995,17 @@ export default function InventoryPage() {
                 setActiveStat(s.id)
                 setPage(1)
               }}
-              className="bg-white rounded-xl border flex items-center gap-3 px-3 py-3 transition-all text-left hover:shadow-md"
+              className="bg-white rounded-xl border flex items-center gap-2 sm:gap-3 px-2.5 sm:px-3 py-2.5 sm:py-3 transition-all text-left hover:shadow-md min-w-0"
               style={{
                 borderColor: activeStat === s.id ? s.color : '#E4E2DC',
                 borderWidth: activeStat === s.id ? 2 : 1,
                 background: activeStat === s.id ? s.bg : 'white',
               }}>
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                 style={{ background:s.bg, color:s.color }}>{s.icon}</div>
               <div>
-                <div className="text-lg font-bold leading-none" style={{ color:'#1C1B19' }}>{s.val}</div>
-                <div className="text-[11px] mt-0.5" style={{ color:'#9C9B97' }}>{s.label}</div>
+                <div className="text-base sm:text-lg font-bold leading-none truncate" style={{ color:'#1C1B19' }}>{s.val}</div>
+                <div className="text-[10px] sm:text-[11px] mt-0.5 truncate" style={{ color:'#9C9B97' }}>{s.label}</div>
               </div>
             </button>
           ))}
@@ -1055,7 +1055,7 @@ export default function InventoryPage() {
         )}
 
         {/* TABS */}
-        <div className="flex gap-1.5 pt-3 pb-1 overflow-x-auto no-scrollbar">
+        <div className="flex gap-1.5 pt-3 pb-1 overflow-x-auto no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
           {['All', ...Object.keys(CAT)].map(c => {
             const n  = c==='All' ? products.length : products.filter(p=>p.category===c).length
             const m  = CAT[c]; const on = activeCat === c
@@ -1088,7 +1088,7 @@ export default function InventoryPage() {
           </div>
         ) : view === 'grid' ? (
           <div className="grid gap-2.5 pt-3"
-            style={{ gridTemplateColumns:'repeat(auto-fill,minmax(165px,1fr))' }}>
+            style={{ gridTemplateColumns:'repeat(auto-fill,minmax(145px,1fr))' }}>
             {pageData.map(p => {
               const m = cm(p.category); const d = disc(p)
               return (
