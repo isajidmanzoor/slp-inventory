@@ -581,7 +581,7 @@ export default function InventoryPage() {
   )
 
   return (
-    <div style={{ minHeight:'100vh', background:'#F5F4F0', fontFamily:'-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif' }}
+    <div style={{ minHeight:'100vh', background:'#F5F4F0', fontFamily:'-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif', overflowX:'hidden', maxWidth:'100vw' }}
       onClick={() => { userMenu && setUserMenu(false); notifOpen && setNotifOpen(false) }}>
       <style>{`
         @keyframes bell-ring {
@@ -884,17 +884,17 @@ export default function InventoryPage() {
       )}
 
       {/* HEADER */}
-      <header className="sticky top-0 z-30 bg-white border-b flex items-center gap-1.5 sm:gap-3 px-2 sm:px-4 py-3 sm:py-4"
+      <header className="sticky top-0 z-30 bg-white border-b flex items-center gap-1 sm:gap-3 px-1.5 sm:px-4 py-3 sm:py-4 max-w-full overflow-hidden"
         style={{ borderColor:'#E4E2DC' }}>
         <div className="flex-shrink-0" style={{ height:42 }}>
           <img src="https://smartlivingpakistan.com/wp-content/uploads/2025/07/New-logo-Smart-Living-Pakistan-mobile-7.png.webp" alt="Smart Living Pakistan"
             style={{ height:'100%', width:'auto', display:'block', objectFit:'contain' }}/>
         </div>
-        <div>
-          <div className="text-xs sm:text-sm font-bold leading-tight whitespace-nowrap">Smart Living Pakistan</div>
+        <div className="min-w-0">
+          <div className="text-xs sm:text-sm font-bold leading-tight truncate max-w-[110px] xs:max-w-none">Smart Living Pakistan</div>
           <div className="text-xs hidden sm:block" style={{ color:'#9C9B97' }}>Inventory Management</div>
         </div>
-        <div className="ml-auto flex items-center gap-1 sm:gap-2">
+        <div className="ml-auto flex items-center gap-0.5 xs:gap-1 sm:gap-2">
           {/* Sync button */}
           {userRole === 'admin' && (
             <button onClick={handleSync} disabled={syncing}
@@ -907,16 +907,16 @@ export default function InventoryPage() {
             </button>
           )}
           <button onClick={fetchProducts}
-            className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg border flex items-center justify-center flex-shrink-0"
+            className="hidden sm:flex w-8 h-8 sm:w-10 sm:h-10 rounded-lg border items-center justify-center flex-shrink-0"
             style={{ borderColor:'#E4E2DC', color:'#6B6A66' }} title="Refresh">
             <RefreshCw size={14}/>
           </button>
           {userRole === 'admin' && (
             <a href="/invoices"
-              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 h-8 sm:h-10 rounded-lg border text-[11px] sm:text-xs font-semibold flex-shrink-0"
+              className="hidden md:flex items-center gap-1.5 px-3 h-10 rounded-lg border text-xs font-semibold flex-shrink-0"
               style={{ borderColor:'#B8D4F5', color:'#1A5FA8', background:'#E8F1FB' }}
               title="Manage invoices">
-              <FileText size={14}/> <span className="hidden md:inline">Invoices</span>
+              <FileText size={14}/> Invoices
             </a>
           )}
 
@@ -982,7 +982,7 @@ export default function InventoryPage() {
               </div>
             )}
           </div>
-          <div className="hidden xs:flex border rounded-lg overflow-hidden flex-shrink-0" style={{ borderColor:'#E4E2DC' }}>
+          <div className="hidden md:flex border rounded-lg overflow-hidden flex-shrink-0" style={{ borderColor:'#E4E2DC' }}>
             {(['grid','list'] as const).map(v => (
               <button key={v} onClick={() => setView(v)}
                 className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center"
