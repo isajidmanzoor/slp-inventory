@@ -884,9 +884,9 @@ export default function InventoryPage() {
       )}
 
       {/* HEADER */}
-      <header className="sticky top-0 z-30 bg-white border-b flex items-center gap-1.5 sm:gap-3 px-2 sm:px-4 py-2.5 sm:py-3"
+      <header className="sticky top-0 z-30 bg-white border-b flex items-center gap-1.5 sm:gap-3 px-2 sm:px-4 py-3 sm:py-4"
         style={{ borderColor:'#E4E2DC' }}>
-        <div className="flex-shrink-0" style={{ height:34 }}>
+        <div className="flex-shrink-0" style={{ height:42 }}>
           <img src="https://smartlivingpakistan.com/wp-content/uploads/2025/07/New-logo-Smart-Living-Pakistan-mobile-7.png.webp" alt="Smart Living Pakistan"
             style={{ height:'100%', width:'auto', display:'block', objectFit:'contain' }}/>
         </div>
@@ -895,13 +895,6 @@ export default function InventoryPage() {
           <div className="text-xs hidden sm:block" style={{ color:'#9C9B97' }}>Inventory Management</div>
         </div>
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
-          {/* Invoices nav */}
-          <a href="/invoices"
-            className="hidden sm:flex items-center gap-1.5 px-3 h-8 rounded-lg border text-xs font-semibold"
-            style={{ borderColor:'#E4E2DC', color:'#1A5FA8', background:'#E8F1FB' }}
-            title="Manage invoices">
-            <FileText size={13}/> Invoices
-          </a>
           {/* Sync button */}
           {userRole === 'admin' && (
             <button onClick={handleSync} disabled={syncing}
@@ -914,14 +907,23 @@ export default function InventoryPage() {
             </button>
           )}
           <button onClick={fetchProducts}
-            className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg border flex items-center justify-center flex-shrink-0"
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg border flex items-center justify-center flex-shrink-0"
             style={{ borderColor:'#E4E2DC', color:'#6B6A66' }} title="Refresh">
             <RefreshCw size={14}/>
           </button>
+          {userRole === 'admin' && (
+            <a href="/invoices"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 h-8 sm:h-10 rounded-lg border text-[11px] sm:text-xs font-semibold flex-shrink-0"
+              style={{ borderColor:'#B8D4F5', color:'#1A5FA8', background:'#E8F1FB' }}
+              title="Manage invoices">
+              <FileText size={14}/> <span className="hidden md:inline">Invoices</span>
+            </a>
+          )}
+
           {/* NOTIFICATION BELL */}
           <div style={{ position:'relative' }}>
             <button onClick={e => { e.stopPropagation(); setNotifOpen(o => !o) }}
-              className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg border flex items-center justify-center relative flex-shrink-0"
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg border flex items-center justify-center relative flex-shrink-0"
               style={{
                 borderColor: (lowCount+outCount) > 0 ? '#F5C0C0' : '#E4E2DC',
                 background:  (lowCount+outCount) > 0 ? '#FFF5F5' : 'white',
@@ -983,7 +985,7 @@ export default function InventoryPage() {
           <div className="hidden xs:flex border rounded-lg overflow-hidden flex-shrink-0" style={{ borderColor:'#E4E2DC' }}>
             {(['grid','list'] as const).map(v => (
               <button key={v} onClick={() => setView(v)}
-                className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center"
+                className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center"
                 style={{ background: view===v ? '#E8F1FB' : 'white',
                          color: view===v ? '#1A5FA8' : '#9C9B97' }}>
                 {v==='grid' ? <LayoutGrid size={14}/> : <List size={14}/>}
@@ -998,9 +1000,9 @@ export default function InventoryPage() {
           {/* User menu */}
           <div style={{ position:'relative' }}>
             <button onClick={e => { e.stopPropagation(); setUserMenu(u => !u) }}
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border flex items-center justify-center flex-shrink-0"
+              className="w-9 h-9 sm:w-11 sm:h-11 rounded-full border flex items-center justify-center flex-shrink-0"
               style={{ borderColor:'#E4E2DC', background:'#E8F1FB', color:'#1A5FA8' }}>
-              <User size={15}/>
+              <User size={17}/>
             </button>
             {userMenu && (
               <div className="fixed sm:absolute right-2 sm:right-0 left-2 sm:left-auto top-14 sm:top-10 bg-white border rounded-xl shadow-xl z-50 sm:w-48 overflow-hidden"
@@ -1021,11 +1023,6 @@ export default function InventoryPage() {
                     </span>
                   </div>
                 </div>
-                <a href="/invoices"
-                  className="w-full flex items-center gap-2 px-3 py-2.5 text-xs hover:bg-gray-50 sm:hidden"
-                  style={{ color:'#1A5FA8' }}>
-                  <FileText size={13}/> Invoices
-                </a>
                 <button onClick={handleSync} disabled={syncing}
                   className="w-full flex items-center gap-2 px-3 py-2.5 text-xs hover:bg-gray-50"
                   style={{ color:'#085041' }}>
