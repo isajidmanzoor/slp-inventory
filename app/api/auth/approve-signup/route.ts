@@ -5,20 +5,19 @@ import nodemailer from 'nodemailer'
 export async function GET(req: NextRequest) {
   try {
     const email = req.nextUrl.searchParams.get('email')
+    const role = req.nextUrl.searchParams.get('role') === 'admin' ? 'admin' : 'user'
     if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 })
 
     const db = supabaseAdmin()
 
-    // Get pending user
     const { data: pending, error: fetchErr } = await db
       .from('pending_users')
       .select('*')
       .eq('email', email)
       .single()
-    if (fetchErr || !pending) throw new Error('Pending user not found')
+    if (fetchErr || !pending) throw new Error('Pending user not found (already approved?)')
 
-    // Create actual Supabase user
-    const { error: createErr } = await db.auth.admin.createUser({
+    const { data: created, error: createErr } = await db.auth.admin.createUser({
       email: pending.email,
       password: pending.password,
       email_confirm: true,
@@ -26,15 +25,24 @@ export async function GET(req: NextRequest) {
     })
     if (createErr) throw new Error(createErr.message)
 
-    // Delete from pending
+    // Set role on profile
+    if (created?.user?.id) {
+      await db.from('profiles').upsert({
+        id: created.user.id,
+        email: pending.email,
+        full_name: pending.full_name,
+        role,
+      }, { onConflict: 'id' })
+    }
+
     await db.from('pending_users').delete().eq('email', email)
 
-    // Send welcome email to user
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: 587,
       auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
     })
+    const roleLabel = role === 'admin' ? 'Administrator' : 'User'
     await transporter.sendMail({
       from: process.env.SMTP_USER,
       to: pending.email,
@@ -42,7 +50,7 @@ export async function GET(req: NextRequest) {
       html: `
         <h2>Welcome to Smart Living Pakistan! 🎉</h2>
         <p>Hi ${pending.full_name || 'there'},</p>
-        <p>Your account has been approved. You can now login to the inventory system.</p>
+        <p>Your account has been approved as <b>${roleLabel}</b>. You can now login to the inventory system.</p>
         <a href="${process.env.NEXT_PUBLIC_APP_URL}/auth" style="background:#1A5FA8;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;margin-top:10px;">
           Login Now
         </a>
@@ -51,7 +59,7 @@ export async function GET(req: NextRequest) {
 
     return new NextResponse(`
       <html><body style="font-family:sans-serif;text-align:center;padding:60px">
-        <h2 style="color:#1A5FA8">✅ Account Approved!</h2>
+        <h2 style="color:#1A5FA8">✅ Account Approved as ${roleLabel}!</h2>
         <p>${email} ka account create ho gaya. User ko email bhej di gayi hai.</p>
       </body></html>
     `, { headers: { 'Content-Type': 'text/html' } })

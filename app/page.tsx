@@ -56,6 +56,7 @@ export default function InventoryPage() {
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileEmail, setProfileEmail] = useState('')
   const [profileSchemaReady, setProfileSchemaReady] = useState(true)
+  const [userRole, setUserRole] = useState<'admin'|'user'>('user')
   const [modal,      setModal]      = useState<'add'|'edit'|null>(null)
   const [editProd,   setEditProd]   = useState<Product|null>(null)
   const [form,       setForm]       = useState({ ...EMPTY })
@@ -124,7 +125,7 @@ export default function InventoryPage() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('low_stock_threshold,email')
+        .select('low_stock_threshold,email,role')
         .single()
 
       if (error) {
@@ -143,6 +144,9 @@ export default function InventoryPage() {
         }
         if (typeof data.email === 'string') {
           setProfileEmail(data.email)
+        }
+        if (data.role === 'admin' || data.role === 'user') {
+          setUserRole(data.role)
         }
       }
     } catch {
@@ -897,14 +901,16 @@ export default function InventoryPage() {
             <FileText size={13}/> Invoices
           </a>
           {/* Sync button */}
-          <button onClick={handleSync} disabled={syncing}
-            className="hidden sm:flex items-center gap-1.5 px-3 h-8 rounded-lg border text-xs font-semibold"
-            style={{ borderColor:'#E4E2DC', color: syncing ? '#9C9B97' : '#085041',
-              background: syncing ? '#F5F4F0' : '#E3F5EE' }}
-            title="Sync from smartlivingpakistan.com">
-            {syncing ? <RefreshCw size={13} className="animate-spin"/> : <RefreshCcw size={13}/>}
-            {syncing ? 'Syncing…' : 'Sync Store'}
-          </button>
+          {userRole === 'admin' && (
+            <button onClick={handleSync} disabled={syncing}
+              className="hidden sm:flex items-center gap-1.5 px-3 h-8 rounded-lg border text-xs font-semibold"
+              style={{ borderColor:'#E4E2DC', color: syncing ? '#9C9B97' : '#085041',
+                background: syncing ? '#F5F4F0' : '#E3F5EE' }}
+              title="Sync from smartlivingpakistan.com">
+              {syncing ? <RefreshCw size={13} className="animate-spin"/> : <RefreshCcw size={13}/>}
+              {syncing ? 'Syncing…' : 'Sync Store'}
+            </button>
+          )}
           <button onClick={fetchProducts}
             className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg border flex items-center justify-center flex-shrink-0"
             style={{ borderColor:'#E4E2DC', color:'#6B6A66' }} title="Refresh">
@@ -1000,8 +1006,17 @@ export default function InventoryPage() {
                 onClick={e => e.stopPropagation()}>
                 <div className="px-3 py-2.5 border-b" style={{ borderColor:'#F0EEE8' }}>
                   <div className="text-xs font-semibold truncate">{user?.email || user?.phone}</div>
-                  <div className="text-[11px] mt-0.5" style={{ color:'#9C9B97' }}>
-                    {user?.user_metadata?.full_name || 'Staff'}
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="text-[11px]" style={{ color:'#9C9B97' }}>
+                      {user?.user_metadata?.full_name || 'Staff'}
+                    </span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                      style={{
+                        background: userRole === 'admin' ? '#FDEAEA' : '#E8F1FB',
+                        color: userRole === 'admin' ? '#9B2B2B' : '#1A5FA8',
+                      }}>
+                      {userRole === 'admin' ? 'ADMIN' : 'VIEW ONLY'}
+                    </span>
                   </div>
                 </div>
                 <a href="/invoices"
@@ -1015,10 +1030,12 @@ export default function InventoryPage() {
                   {syncing ? <RefreshCw size={13} className="animate-spin"/> : <RefreshCcw size={13}/>}
                   {syncing ? 'Syncing store…' : 'Sync from Store'}
                 </button>
-                <a href="/users" className="w-full flex items-center gap-2 px-3 py-2.5 text-xs hover:bg-gray-50 border-t"
-                  style={{ color:'#3E3D3A', borderColor:'#F0EEE8' }}>
-                  <Users size={13}/> Manage Users
-                </a>
+                {userRole === 'admin' && (
+                  <a href="/users" className="w-full flex items-center gap-2 px-3 py-2.5 text-xs hover:bg-gray-50 border-t"
+                    style={{ color:'#3E3D3A', borderColor:'#F0EEE8' }}>
+                    <Users size={13}/> Manage Users
+                  </a>
+                )}
                 <button onClick={() => { setUserMenu(false); setDeleteAccountOpen(true) }}
                   className="w-full flex items-center gap-2 px-3 py-2.5 text-xs hover:bg-red-50 border-t"
                   style={{ color:'#9B2B2B', borderColor:'#F0EEE8' }}>
@@ -1196,16 +1213,20 @@ export default function InventoryPage() {
                           <ExternalLink size={12}/>
                         </a>
                       )}
-                      <button onClick={() => openEdit(p)}
-                        className="w-7 h-7 rounded-md bg-white border flex items-center justify-center"
-                        style={{ borderColor:'#E4E2DC' }}>
-                        <Pencil size={12}/>
-                      </button>
-                      <button onClick={() => setConfirmId(p.id)}
-                        className="w-7 h-7 rounded-md bg-white border flex items-center justify-center"
-                        style={{ borderColor:'#F5C0C0' }}>
-                        <Trash2 size={12}/>
-                      </button>
+                      {userRole === 'admin' && (
+                        <>
+                          <button onClick={() => openEdit(p)}
+                            className="w-7 h-7 rounded-md bg-white border flex items-center justify-center"
+                            style={{ borderColor:'#E4E2DC' }}>
+                            <Pencil size={12}/>
+                          </button>
+                          <button onClick={() => setConfirmId(p.id)}
+                            className="w-7 h-7 rounded-md bg-white border flex items-center justify-center"
+                            style={{ borderColor:'#F5C0C0' }}>
+                            <Trash2 size={12}/>
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                   <div className="p-2.5 flex flex-col gap-1.5 flex-1">
@@ -1303,12 +1324,18 @@ export default function InventoryPage() {
                       </td>
                       <td className="px-3 py-2"><StockBadge stock={p.stock} threshold={effectiveThreshold(p)}/></td>
                       <td className="px-3 py-2 text-center">
-                        <button onClick={() => openEdit(p)}
-                          className="w-7 h-7 rounded-md border inline-flex items-center justify-center mr-1"
-                          style={{ borderColor:'#E4E2DC' }}><Pencil size={11}/></button>
-                        <button onClick={() => setConfirmId(p.id)}
-                          className="w-7 h-7 rounded-md border inline-flex items-center justify-center"
-                          style={{ borderColor:'#F5C0C0' }}><Trash2 size={11}/></button>
+                        {userRole === 'admin' ? (
+                          <>
+                            <button onClick={() => openEdit(p)}
+                              className="w-7 h-7 rounded-md border inline-flex items-center justify-center mr-1"
+                              style={{ borderColor:'#E4E2DC' }}><Pencil size={11}/></button>
+                            <button onClick={() => setConfirmId(p.id)}
+                              className="w-7 h-7 rounded-md border inline-flex items-center justify-center"
+                              style={{ borderColor:'#F5C0C0' }}><Trash2 size={11}/></button>
+                          </>
+                        ) : (
+                          <span className="text-[10px]" style={{ color:'#B4B2A9' }}>View only</span>
+                        )}
                       </td>
                     </tr>
                   )
