@@ -792,6 +792,15 @@ export default function InventoryPage() {
             </a>
           )}
 
+          {userRole === 'admin' && (
+            <a href="/invoices"
+              className="flex md:hidden w-8 h-8 sm:w-10 sm:h-10 rounded-lg border items-center justify-center flex-shrink-0"
+              style={{ borderColor:'#B8D4F5', color:'#1A5FA8', background:'#E8F1FB' }}
+              title="Invoices">
+              <FileText size={15}/>
+            </a>
+          )}
+
           {/* NOTIFICATION BELL */}
           <div style={{ position: 'relative' }}>
             <button onClick={e => { e.stopPropagation(); setNotifOpen(o => !o) }}
@@ -920,7 +929,7 @@ export default function InventoryPage() {
           {[
             { id: 'all' as const, icon: <Package size={18} />, label: 'Products', val: products.length, bg: '#E8F1FB', color: '#0C447C' },
             { id: 'instock' as const, icon: <Tag size={18} />, label: 'Units in Stock', val: fmt(totalStock), bg: '#E3F5EE', color: '#085041' },
-            { id: 'value' as const, icon: <DollarSign size={18} />, label: 'Stock Value', val: '₨' + valStr, bg: '#FDF0DC', color: '#633806' },
+            { id: 'value' as const, icon: <span style={{fontSize:14,fontWeight:700}}>₨</span>, label: 'Stock Value', val: '₨' + valStr, bg: '#FDF0DC', color: '#633806' },
             {
               id: 'lowstock' as const,
               icon: lowCount + outCount > 0 ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />,
