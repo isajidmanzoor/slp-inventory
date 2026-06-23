@@ -119,7 +119,26 @@ export default function InventoryPage() {
     return items
   }, [])
 
-  useEffect(() => { if (!authLoading) fetchProducts() }, [authLoading, fetchProducts])
+  // Auto-sync: if last sync was > 23 hours ago, trigger automatically
+  useEffect(() => {
+    if (!authLoading) {
+      fetchProducts()
+      const lastSync = localStorage.getItem('slp_last_sync')
+      const now = Date.now()
+      const twentyThreeHours = 23 * 60 * 60 * 1000
+      if (!lastSync || now - parseInt(lastSync) > twentyThreeHours) {
+        fetch('/api/cron/sync-sitemap')
+          .then(r => r.json())
+          .then(data => {
+            if (data.ok) {
+              localStorage.setItem('slp_last_sync', String(now))
+              fetchProducts()
+            }
+          })
+          .catch(() => {})
+      }
+    }
+  }, [authLoading, fetchProducts])
 
   // ── Fetch profile (role, threshold, email) ─────────
   const fetchProfile = useCallback(async () => {
