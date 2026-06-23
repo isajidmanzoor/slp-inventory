@@ -38,7 +38,7 @@ export default function NewInvoicePage() {
   const [shippingCharges, setShippingCharges] = useState('0')
   const [deliveryTax,     setDeliveryTax]     = useState('0')
   const [extraDiscount,   setExtraDiscount]   = useState('0')
-  const [currency,        setCurrency]        = useState('PKR')
+  const [currency,        setCurrency]        = useState('PKR') // always PKR
 
   const [paymentMethod, setPaymentMethod] = useState<'Card'|'Bank'|'COD'|'Wallet'|''>('')
   const [transactionId, setTransactionId] = useState('')
@@ -292,12 +292,6 @@ export default function NewInvoicePage() {
             </Field>
             <Field label="Extra Discount">
               <input type="number" min="0" className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={extraDiscount} onChange={e => setExtraDiscount(e.target.value)}/>
-            </Field>
-            <Field label="Currency">
-              <select className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={currency} onChange={e => setCurrency(e.target.value)}>
-                <option value="PKR">PKR (₨)</option>
-                <option value="USD">USD ($)</option>
-              </select>
             </Field>
           </div>
           <div className="rounded-xl p-4 space-y-1.5" style={{ background:'#F5F4F0' }}>

@@ -45,10 +45,16 @@ export default function InvoicesListPage() {
     if (!confirmId) return
     setDeleting(true)
     try {
-      await fetch(`/api/invoices/${confirmId}`, { method: 'DELETE' })
+      const res = await fetch(`/api/invoices/${confirmId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Delete failed')
+      }
       setConfirmId(null)
       fetchInvoices()
-    } catch {}
+    } catch (e: any) {
+      alert(e.message || 'Could not delete invoice')
+    }
     setDeleting(false)
   }
 
@@ -146,8 +152,8 @@ export default function InvoicesListPage() {
                         <td className="py-2.5 px-3 font-semibold">{inv.invoice_number}</td>
                         <td className="py-2.5 px-3">{inv.customer_name}</td>
                         <td className="py-2.5 px-3" style={{ color:'#6B6A66' }}>{fmtDate(inv.invoice_date)}</td>
-                        <td className="py-2.5 px-3 font-semibold">{fmtMoney(inv.grand_total, inv.currency)}</td>
-                        <td className="py-2.5 px-3" style={{ color: due > 0 ? '#9B2B2B' : '#0D6E4F' }}>{fmtMoney(due, inv.currency)}</td>
+                        <td className="py-2.5 px-3 font-semibold">{fmtMoney(inv.grand_total, 'PKR')}</td>
+                        <td className="py-2.5 px-3" style={{ color: due > 0 ? '#9B2B2B' : '#0D6E4F' }}>{fmtMoney(due, 'PKR')}</td>
                         <td className="py-2.5 px-3">
                           <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold" style={{ background:st.bg, color:st.color }}>
                             {inv.payment_status}

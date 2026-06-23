@@ -103,10 +103,10 @@ export default function InvoiceDocument({ invoice, items, viewUrl, paymentQrUrl 
                   <td className="py-2.5 px-3 font-medium">{it.product_name}</td>
                   <td className="py-2.5 px-3" style={{ color:'#9C9B97', fontSize:12 }}>{it.sku || '—'}</td>
                   <td className="py-2.5 px-3 text-center">{it.quantity}</td>
-                  <td className="py-2.5 px-3 text-right">{fmtMoney(it.unit_price, invoice.currency)}</td>
-                  <td className="py-2.5 px-3 text-right" style={{ color:'#9B2B2B' }}>{it.discount > 0 ? `-${fmtMoney(it.discount, invoice.currency)}` : '—'}</td>
+                  <td className="py-2.5 px-3 text-right">{fmtMoney(it.unit_price, 'PKR')}</td>
+                  <td className="py-2.5 px-3 text-right" style={{ color:'#9B2B2B' }}>{it.discount > 0 ? `-${fmtMoney(it.discount, 'PKR')}` : '—'}</td>
                   <td className="py-2.5 px-3 text-right">{it.tax_pct > 0 ? `${it.tax_pct}%` : '—'}</td>
-                  <td className="py-2.5 px-3 text-right font-semibold">{fmtMoney(it.line_total, invoice.currency)}</td>
+                  <td className="py-2.5 px-3 text-right font-semibold">{fmtMoney(it.line_total, 'PKR')}</td>
                 </tr>
               ))}
             </tbody>
@@ -127,16 +127,16 @@ export default function InvoiceDocument({ invoice, items, viewUrl, paymentQrUrl 
           </div>
 
           <div className="w-full sm:w-72 space-y-1.5 text-sm">
-            <TotalRow label="Subtotal" value={fmtMoney(invoice.subtotal, invoice.currency)}/>
-            {invoice.discount_amount > 0 && <TotalRow label="Discount" value={`-${fmtMoney(invoice.discount_amount, invoice.currency)}`} color="#9B2B2B"/>}
-            {invoice.tax_amount > 0 && <TotalRow label="Tax" value={fmtMoney(invoice.tax_amount, invoice.currency)}/>}
-            {invoice.shipping_charges > 0 && <TotalRow label="Shipping" value={fmtMoney(invoice.shipping_charges, invoice.currency)}/>}
-            {invoice.delivery_tax > 0 && <TotalRow label="Delivery Tax" value={fmtMoney(invoice.delivery_tax, invoice.currency)}/>}
+            <TotalRow label="Subtotal" value={fmtMoney(invoice.subtotal, 'PKR')}/>
+            {invoice.discount_amount > 0 && <TotalRow label="Discount" value={`-${fmtMoney(invoice.discount_amount, 'PKR')}`} color="#9B2B2B"/>}
+            {invoice.tax_amount > 0 && <TotalRow label="Tax" value={fmtMoney(invoice.tax_amount, 'PKR')}/>}
+            {invoice.shipping_charges > 0 && <TotalRow label="Shipping" value={fmtMoney(invoice.shipping_charges, 'PKR')}/>}
+            {invoice.delivery_tax > 0 && <TotalRow label="Delivery Tax" value={fmtMoney(invoice.delivery_tax, 'PKR')}/>}
             <div className="pt-2 mt-1 border-t" style={{ borderColor:'#1A5FA8' }}>
-              <TotalRow label="Grand Total" value={fmtMoney(invoice.grand_total, invoice.currency)} bold big/>
+              <TotalRow label="Grand Total" value={fmtMoney(invoice.grand_total, 'PKR')} bold big/>
             </div>
-            {invoice.amount_paid > 0 && <TotalRow label="Amount Paid" value={fmtMoney(invoice.amount_paid, invoice.currency)} color="#0D6E4F"/>}
-            {due > 0 && <TotalRow label="Balance Due" value={fmtMoney(due, invoice.currency)} color="#9B2B2B" bold/>}
+            {invoice.amount_paid > 0 && <TotalRow label="Amount Paid" value={fmtMoney(invoice.amount_paid, 'PKR')} color="#0D6E4F"/>}
+            {due > 0 && <TotalRow label="Balance Due" value={fmtMoney(due, 'PKR')} color="#9B2B2B" bold/>}
           </div>
         </div>
 
