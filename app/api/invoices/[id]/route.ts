@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
+const supabase = supabaseAdmin()
 import { calcInvoiceTotals } from '@/lib/invoice-utils'
 import type { InvoiceItem } from '@/lib/supabase'
 
