@@ -1071,14 +1071,28 @@ export default function InventoryPage() {
                     </span>
                     <div className="text-xs font-semibold leading-snug" style={{ color: '#1C1B19' }}>{p.name}</div>
                     {p.sub_category && <div className="text-[11px]" style={{ color: '#9C9B97' }}>{p.sub_category}</div>}
+                    {(p as any).rating > 0 && (
+                      <div className="flex items-center gap-1">
+                        <span style={{ color:'#F5A623', fontSize:11 }}>{'★'.repeat(Math.round((p as any).rating))}{'☆'.repeat(5-Math.round((p as any).rating))}</span>
+                        <span className="text-[10px]" style={{ color:'#9C9B97' }}>({(p as any).review_count || 0})</span>
+                      </div>
+                    )}
                     <div className="flex items-baseline gap-1.5 flex-wrap">
                       {p.sale_price > 0
                         ? <span className="text-sm font-bold">₨{fmt(p.sale_price)}</span>
                         : <span className="text-xs italic" style={{ color: '#9C9B97' }}>Price TBD</span>}
                       {p.original_price > 0 && <span className="text-[11px] line-through" style={{ color: '#B4B2A9' }}>₨{fmt(p.original_price)}</span>}
+                      {(p as any).price_changed_at && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background:'#FDF0DC', color:'#8A4D0B' }}>Price changed</span>
+                      )}
                     </div>
                     <div className="border-t pt-1.5 mt-auto" style={{ borderColor: '#F0EEE8' }}>
                       <StockBadge stock={p.stock} threshold={threshold} />
+                      {(p as any).last_synced_at && (
+                        <div className="text-[9px] mt-1" style={{ color:'#C4C2B9' }}>
+                          Synced {new Date((p as any).last_synced_at).toLocaleDateString('en-PK', {day:'numeric',month:'short'})}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
