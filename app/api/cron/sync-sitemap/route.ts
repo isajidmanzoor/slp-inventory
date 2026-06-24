@@ -8,8 +8,8 @@ export const maxDuration = 300
 async function scrapeProduct(url: string) {
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SLPBot/1.0)' },
-      signal: AbortSignal.timeout(10000),
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SLPInventoryBot/2.0)' },
+      signal: AbortSignal.timeout(12000),
     })
     const html = await res.text()
 
@@ -19,73 +19,103 @@ async function scrapeProduct(url: string) {
       return m ? m[1].trim() : null
     }
 
-    // Title
-    const title = getMeta('og:title') || getMeta('twitter:title') || ''
-    const name = title.replace(/\s*[-–|].*$/, '').replace(/\s*\|\s*Smart Living.*$/i, '').trim()
+    // Name from og:title
+    const rawTitle = getMeta('og:title') || ''
+    const name = rawTitle.replace(/\s*[-–|].*$/, '').replace(/\s*\|\s*Smart Living.*$/i, '').trim()
 
     // Image
     const image = getMeta('og:image') || null
 
-    // Price from JSON-LD
+    // Price from meta tags (most reliable)
     let price = 0
     let originalPrice = 0
-    const jsonLdMatch = html.match(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)
-    if (jsonLdMatch) {
-      for (const block of jsonLdMatch) {
-        try {
-          const json = JSON.parse(block.replace(/<[^>]+>/g, ''))
-          const findPrice = (obj: any): void => {
-            if (!obj || typeof obj !== 'object') return
-            if (obj['@type'] === 'Offer' || obj['@type'] === 'AggregateOffer') {
-              if (obj.price) price = parseFloat(obj.price) || 0
-              if (obj.highPrice) originalPrice = parseFloat(obj.highPrice) || 0
-              if (obj.lowPrice && !price) price = parseFloat(obj.lowPrice) || 0
-            }
-            Object.values(obj).forEach(v => { if (typeof v === 'object') findPrice(v) })
+    const metaPrice = getMeta('product:price:amount')
+    if (metaPrice) price = parseFloat(metaPrice) || 0
+
+    // JSON-LD for original price
+    const jsonLdBlocks = html.match(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g) || []
+    for (const block of jsonLdBlocks) {
+      try {
+        const cleaned = block.replace(/<script[^>]*>/, '').replace(/<\/script>/, '')
+        const json = JSON.parse(cleaned)
+        const findOffers = (obj: any): void => {
+          if (!obj || typeof obj !== 'object') return
+          if (obj['@type'] === 'Offer') {
+            if (obj.price && !price) price = parseFloat(obj.price) || 0
           }
-          findPrice(json)
-          if (price > 0) break
-        } catch {}
-      }
+          if (obj.offers) {
+            const o = Array.isArray(obj.offers) ? obj.offers[0] : obj.offers
+            if (o?.price && !price) price = parseFloat(o.price) || 0
+          }
+          // Get original price from priceSpecification
+          if (obj.priceSpecification) {
+            const specs = Array.isArray(obj.priceSpecification) ? obj.priceSpecification : [obj.priceSpecification]
+            for (const spec of specs) {
+              if (spec.price && spec.price > price) originalPrice = parseFloat(spec.price) || 0
+            }
+          }
+          Object.values(obj).forEach(v => { if (typeof v === 'object') findOffers(v) })
+        }
+        findOffers(json)
+        if (price > 0) break
+      } catch {}
     }
 
-    // Fallback price from page
-    if (!price) {
-      const pm = html.match(/["']price["']\s*:\s*["']([\d.]+)["']/)
-        || html.match(/woocommerce-Price-amount[^>]*>[\s\S]*?[\u20a8\u0024]\s*<\/bdi>([\d,]+)/)
-      if (pm) price = parseFloat(pm[1].replace(/,/g, '')) || 0
+    // Fallback: strikethrough price from HTML
+    if (!originalPrice) {
+      const delMatch = html.match(/<del[^>]*>[\s\S]*?[\u20a8]([\d,]+)[\s\S]*?<\/del>/)
+      if (delMatch) originalPrice = parseFloat(delMatch[1].replace(/,/g, '')) || 0
     }
 
-    // Sale price vs regular price
-    const regularMatch = html.match(/class="woocommerce-Price-amount[^"]*"[^>]*>[\s\S]*?del[\s\S]*?>([\d,]+)/)
-    if (regularMatch && !originalPrice) {
-      originalPrice = parseFloat(regularMatch[1].replace(/,/g, '')) || 0
-    }
-
-    // Stock status
+    // Stock
     const availability = getMeta('product:availability') || ''
     const instock = !availability.toLowerCase().includes('outofstock')
+    const stockStatus = instock ? 'instock' : 'outofstock'
 
-    // Stock quantity from page
+    // Stock quantity
     let stockQty = instock ? 10 : 0
     const stockMatch = html.match(/(\d+)\s+in\s+stock/i)
-      || html.match(/"stockQuantity"\s*:\s*(\d+)/)
-      || html.match(/stock_quantity['"]\s*:\s*(\d+)/)
-    if (stockMatch) stockQty = parseInt(stockMatch[1]) || (instock ? 10 : 0)
+    if (stockMatch) stockQty = parseInt(stockMatch[1]) || stockQty
 
-    // Category from URL
+    // Rating + review count from JSON-LD
+    let rating = 0
+    let reviewCount = 0
+    for (const block of jsonLdBlocks) {
+      try {
+        const cleaned = block.replace(/<script[^>]*>/, '').replace(/<\/script>/, '')
+        const json = JSON.parse(cleaned)
+        const findRating = (obj: any): void => {
+          if (!obj || typeof obj !== 'object') return
+          if (obj.aggregateRating) {
+            rating = parseFloat(obj.aggregateRating.ratingValue) || 0
+            reviewCount = parseInt(obj.aggregateRating.reviewCount || obj.aggregateRating.ratingCount) || 0
+          }
+          Object.values(obj).forEach(v => { if (typeof v === 'object') findRating(v) })
+        }
+        findRating(json)
+        if (rating > 0) break
+      } catch {}
+    }
+
+    // Description from meta
+    const description = getMeta('og:description') || getMeta('description') || ''
+
+    // Category from breadcrumb/URL
     const urlParts = url.replace(/\/$/, '').split('/')
-    const catSlug = urlParts[urlParts.length - 3] || ''
-    const subSlug = urlParts[urlParts.length - 2] || ''
+    const catSlug = urlParts.length > 5 ? urlParts[urlParts.length - 3] : ''
+    const subSlug = urlParts.length > 5 ? urlParts[urlParts.length - 2] : ''
 
-    return { name, image, price, originalPrice, stockQty, instock, catSlug, subSlug }
-  } catch {
-    return null
-  }
+    return {
+      name, image, price, originalPrice,
+      stockQty, stockStatus, instock,
+      rating, reviewCount, description,
+      catSlug, subSlug,
+    }
+  } catch { return null }
 }
 
-function guessCategory(url: string, catSlug: string): string {
-  const u = (url + catSlug).toLowerCase()
+function guessCategory(url: string): string {
+  const u = url.toLowerCase()
   if (/ceiling|hanging|wall.light|pillar|garden|solar|flood/.test(u)) return 'Lights'
   if (/switch|volt.meter|doorbell|extension/.test(u)) return 'Switch Plates'
   if (/door.handle|door.lock|drawer|cabinet|gate.lock|stopper/.test(u)) return 'Hardware'
@@ -97,12 +127,14 @@ function guessCategory(url: string, catSlug: string): string {
 }
 
 function toTitleCase(slug: string) {
-  return slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+  return slug.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 }
 
 export async function GET(req: NextRequest) {
   const db = supabaseAdmin()
-  let added = 0, updated = 0, errors = 0, priceUpdated = 0, stockMismatches = 0
+  const now = new Date().toISOString()
+  let added = 0, updated = 0, errors = 0
+  let priceChanges = 0, stockChanges = 0, newReviews = 0
 
   try {
     // 1. Fetch sitemap
@@ -111,96 +143,119 @@ export async function GET(req: NextRequest) {
     })
     const sitemapXml = await sitemapRes.text()
 
-    // 2. Parse URLs + sitemap images
+    // 2. Parse URLs + images from sitemap
     const urlBlocks = sitemapXml.split('<url>').slice(1)
     const sitemapProducts: { url: string; sitemapImage: string | null }[] = []
-
     for (const block of urlBlocks) {
       const locMatch = block.match(/<loc>([^<]+)<\/loc>/)
       if (!locMatch || !locMatch[1].includes('/product/')) continue
       const imgMatch = block.match(/<image:loc>([^<]+)<\/image:loc>/)
-      sitemapProducts.push({
-        url: locMatch[1],
-        sitemapImage: imgMatch ? imgMatch[1] : null,
-      })
+      sitemapProducts.push({ url: locMatch[1], sitemapImage: imgMatch ? imgMatch[1] : null })
     }
 
     // 3. Get existing products
-    const { data: existing } = await db.from('products').select('id, store_url, image_url, stock, sale_price, name')
+    const { data: existing } = await db
+      .from('products')
+      .select('id, store_url, image_url, stock, sale_price, original_price, review_count, rating, stock_status')
     const existingMap = new Map((existing ?? []).map((p: any) => [p.store_url, p]))
 
-    // 4. Process each product
+    // 4. Process each product with full scraping
     for (const { url, sitemapImage } of sitemapProducts) {
       try {
         const scraped = await scrapeProduct(url)
         const found = existingMap.get(url)
+        const now = new Date().toISOString()
 
         if (found) {
-          const updateData: any = {}
+          const updateData: any = { last_synced_at: now }
 
-          // Update image if missing or from sitemap
+          // Image update
           if (sitemapImage && !found.image_url?.startsWith('data:')) {
             updateData.image_url = sitemapImage
           }
 
-          // Update price if scraped successfully
+          // Price change tracking
           if (scraped?.price && scraped.price > 0 && scraped.price !== found.sale_price) {
+            // Save to price history
+            await db.from('price_history').insert({
+              product_id: found.id,
+              old_price: found.sale_price,
+              new_price: scraped.price,
+              changed_at: now,
+            })
             updateData.sale_price = scraped.price
-            priceUpdated++
+            updateData.price_changed_at = now
+            priceChanges++
           }
 
-          if (scraped?.originalPrice && scraped.originalPrice > 0) {
+          if (scraped?.originalPrice && scraped.originalPrice > scraped.price) {
             updateData.original_price = scraped.originalPrice
           }
 
-          // Stock mismatch detection
-          if (scraped) {
-            const dbInstock = found.stock > 0
-            if (dbInstock !== scraped.instock) stockMismatches++
+          // Stock change tracking
+          if (scraped && scraped.stockStatus !== found.stock_status) {
+            stockChanges++
+            updateData.stock_status = scraped.stockStatus
+            if (!scraped.instock && found.stock > 0) {
+              updateData.stock = 0
+            } else if (scraped.instock && found.stock === 0) {
+              updateData.stock = scraped.stockQty || 10
+            }
           }
 
-          if (Object.keys(updateData).length > 0) {
-            await db.from('products').update(updateData).eq('id', found.id)
+          // Review count update
+          if (scraped?.reviewCount && scraped.reviewCount > (found.review_count || 0)) {
+            updateData.review_count = scraped.reviewCount
+            updateData.rating = scraped.rating
+            newReviews += scraped.reviewCount - (found.review_count || 0)
           }
+
+          // Description update
+          if (scraped?.description) updateData.description = scraped.description
+
+          await db.from('products').update(updateData).eq('id', found.id)
           updated++
         } else {
-          // New product
+          // New product — full scrape
           const urlParts = url.replace(/\/$/, '').split('/')
           const nameSlug = urlParts[urlParts.length - 1]
-          const catSlug = urlParts[urlParts.length - 3] || ''
-          const subSlug = urlParts[urlParts.length - 2] || ''
-
           const name = scraped?.name || toTitleCase(nameSlug)
-          const category = guessCategory(url, catSlug)
-          const subCategory = toTitleCase(subSlug)
+          const category = guessCategory(url)
 
           await db.from('products').insert({
             name,
             category,
-            sub_category: subCategory,
+            sub_category: scraped?.subSlug ? toTitleCase(scraped.subSlug) : '',
             sale_price: scraped?.price || 0,
             original_price: scraped?.originalPrice || 0,
             stock: scraped?.stockQty ?? 10,
+            stock_status: scraped?.stockStatus || 'instock',
             notes: '',
             image_url: sitemapImage || scraped?.image || null,
             store_url: url,
             alert_enabled: true,
+            review_count: scraped?.reviewCount || 0,
+            rating: scraped?.rating || 0,
+            description: scraped?.description || '',
+            last_synced_at: now,
           })
           added++
         }
 
-        await new Promise(r => setTimeout(r, 150))
+        await new Promise(r => setTimeout(r, 200))
       } catch { errors++ }
     }
 
     return NextResponse.json({
       ok: true,
+      synced_at: now,
       total: sitemapProducts.length,
       added,
       updated,
       errors,
-      price_updated: priceUpdated,
-      stock_mismatches: stockMismatches,
+      price_changes: priceChanges,
+      stock_changes: stockChanges,
+      new_reviews: newReviews,
     })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
