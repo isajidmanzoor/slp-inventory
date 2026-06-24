@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     }, { onConflict: 'email' })
     if (error) throw new Error(error.message)
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL
+    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin).replace(/\/$/, '')
     const approveUserUrl = `${baseUrl}/api/auth/approve-signup?email=${encodeURIComponent(email)}&role=user`
     const approveAdminUrl = `${baseUrl}/api/auth/approve-signup?email=${encodeURIComponent(email)}&role=admin`
 

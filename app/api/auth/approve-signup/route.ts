@@ -9,6 +9,7 @@ export async function GET(req: NextRequest) {
     if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 })
 
     const db = supabaseAdmin()
+    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin).replace(/\/$/, '')
 
     const { data: pending, error: fetchErr } = await db
       .from('pending_users')
@@ -51,7 +52,7 @@ export async function GET(req: NextRequest) {
         <h2>Welcome to Smart Living Pakistan! 🎉</h2>
         <p>Hi ${pending.full_name || 'there'},</p>
         <p>Your account has been approved as <b>${roleLabel}</b>. You can now login to the inventory system.</p>
-        <a href="${process.env.NEXT_PUBLIC_APP_URL}/auth" style="background:#1A5FA8;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;margin-top:10px;">
+        <a href="${baseUrl}/auth" style="background:#1A5FA8;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;margin-top:10px;">
           Login Now
         </a>
       `,

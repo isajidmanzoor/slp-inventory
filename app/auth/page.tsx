@@ -31,15 +31,82 @@ export default function AuthPage() {
   const [showNewPw, setShowNewPw] = useState(false)
   const otpRefs = useRef<(HTMLInputElement|null)[]>([])
   const timerRef = useRef<ReturnType<typeof setInterval>|null>(null)
+  const recoveryFlowRef = useRef(false)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        if (data.session.user?.recovery_sent_at) { setMode('reset-password'); return }
-        router.replace('/')
+    let mounted = true
+
+    async function initAuth() {
+      const url = new URL(window.location.href)
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+      const linkError = hashParams.get('error_description') || url.searchParams.get('error_description')
+      const isRecovery =
+        url.searchParams.get('mode') === 'reset-password' ||
+        url.searchParams.get('type') === 'recovery' ||
+        hashParams.get('type') === 'recovery'
+
+      if (linkError) {
+        setMode('forgot')
+        showToast(decodeURIComponent(linkError.replace(/\+/g, ' ')), 'err')
+        window.history.replaceState({}, document.title, '/auth')
+        return
       }
+
+      recoveryFlowRef.current = isRecovery
+      if (isRecovery) setMode('reset-password')
+
+      const tokenHash = url.searchParams.get('token_hash')
+      if (isRecovery && tokenHash) {
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: 'recovery',
+        })
+        if (error) {
+          showToast('Reset link expired or invalid. Please request a new link.', 'err')
+        } else {
+          window.history.replaceState({}, document.title, '/auth?mode=reset-password')
+        }
+      }
+
+      const code = url.searchParams.get('code')
+      if (isRecovery && code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        if (error) {
+          showToast('Reset link expired or invalid. Please request a new link.', 'err')
+        } else {
+          window.history.replaceState({}, document.title, '/auth?mode=reset-password')
+        }
+      }
+
+      const { data } = await supabase.auth.getSession()
+      if (!mounted) return
+
+      if (isRecovery) {
+        if (!data.session) {
+          showToast('Reset link expired or invalid. Please request a new link.', 'err')
+        }
+        setMode('reset-password')
+        return
+      }
+
+      if (data.session) router.replace('/')
+    }
+
+    initAuth()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        recoveryFlowRef.current = true
+        setMode('reset-password')
+        return
+      }
+      if (session && !recoveryFlowRef.current) router.replace('/')
     })
-    if (window.location.hash.includes('type=recovery')) setMode('reset-password')
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [router])
 
   function showToast(msg: string, type: 'ok'|'err' = 'ok') {
@@ -98,14 +165,20 @@ export default function AuthPage() {
       if (!emailVal || !isValidEmail(emailVal)) { showToast('Enter a valid email address', 'err'); return }
       setLoading(true)
       try {
-        const { error } = await supabase.auth.resetPasswordForEmail(emailVal, {
-          redirectTo: `${window.location.origin}/auth?mode=reset-password`,
+        const res = await fetch('/api/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: emailVal }),
         })
-        if (error) throw error
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Failed to send reset link')
         setOtpTarget(emailVal)
         showToast('Reset link sent! Check your email.')
         startCountdown(60)
-      } catch (e: any) { showToast(friendlyError(e.message), 'err') }
+      } catch (e: any) {
+        if (isRateLimitError(e.message)) startCountdown(60)
+        showToast(friendlyError(e.message), 'err')
+      }
       setLoading(false)
     } else {
       const phoneVal = normalizePhone(phone)
@@ -171,6 +244,7 @@ export default function AuthPage() {
   function isValidPhone(p: string) { const d = p.replace(/\D/g,''); return d.length >= 10 && d.length <= 13 }
   function friendlyError(msg: string): string {
     if (!msg) return 'Something went wrong. Please try again.'
+    if (isRateLimitError(msg))                    return 'Please wait 1 minute before sending another reset link'
     if (msg.includes('Invalid login credentials')) return 'Incorrect email or password'
     if (msg.includes('Email not confirmed'))       return 'Please verify your email first'
     if (msg.includes('already registered'))        return 'This email is already registered'
@@ -178,8 +252,14 @@ export default function AuthPage() {
     if (msg.includes('Password should be'))        return 'Password must be at least 8 characters'
     if (msg.includes('Token has expired'))         return 'OTP expired — please request a new one'
     if (msg.includes('Invalid OTP'))               return 'Incorrect OTP code'
-    if (msg.includes('rate limit'))                return 'Too many attempts — wait a minute'
     return msg
+  }
+  function isRateLimitError(msg: string): boolean {
+    const normalized = msg.toLowerCase()
+    return normalized.includes('rate limit') ||
+      normalized.includes('too many') ||
+      normalized.includes('security purposes') ||
+      normalized.includes('after 60 seconds')
   }
   function reset(m: Mode) { setMode(m); setOtpDigits(['','','','','','']); setPassword(''); setConfirm('') }
 

@@ -79,7 +79,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const { data: items } = await supabase
       .from('invoice_items').select('*').eq('invoice_id', params.id).order('sort_order')
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '')
     const viewUrl = `${appUrl}/invoice/${invoice.public_token}`
 
     if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
