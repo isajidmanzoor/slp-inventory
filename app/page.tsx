@@ -932,7 +932,7 @@ export default function InventoryPage() {
         )}
 
         {/* STATS */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 pt-4">
           {[
             { id: 'all' as const, icon: <Package size={18} />, label: 'Products', val: products.length, bg: '#E8F1FB', color: '#0C447C' },
             { id: 'instock' as const, icon: <Tag size={18} />, label: 'Units in Stock', val: fmt(totalStock), bg: '#E3F5EE', color: '#085041' },
