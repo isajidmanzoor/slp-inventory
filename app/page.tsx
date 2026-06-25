@@ -299,6 +299,13 @@ export default function InventoryPage() {
   const pageData = data.slice((curPage - 1) * PER, curPage * PER)
 
   const totalStock = products.reduce((s, p) => s + p.stock, 0)
+  const lastSynced = products.reduce((latest, p) => {
+    const t = (p as any).last_synced_at
+    return t && t > latest ? t : latest
+  }, '')
+  const lastSyncedStr = lastSynced
+    ? new Date(lastSynced).toLocaleDateString('en-PK', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })
+    : 'Never'
   const stockValue = products.reduce((s, p) => s + p.sale_price * p.stock, 0)
   const lowCount = products.filter(p => p.alert_enabled && p.stock > 0 && p.stock <= effectiveThreshold(p)).length
   const outCount = products.filter(p => p.alert_enabled && p.stock === 0).length
@@ -929,6 +936,7 @@ export default function InventoryPage() {
           {[
             { id: 'all' as const, icon: <Package size={18} />, label: 'Products', val: products.length, bg: '#E8F1FB', color: '#0C447C' },
             { id: 'instock' as const, icon: <Tag size={18} />, label: 'Units in Stock', val: fmt(totalStock), bg: '#E3F5EE', color: '#085041' },
+    { id: 'synced' as const, icon: <RefreshCw size={18} />, label: 'Last Synced', val: lastSyncedStr, bg: '#E8F1FB', color: '#1A5FA8' },
             { id: 'value' as const, icon: <span style={{fontSize:14,fontWeight:700}}>₨</span>, label: 'Stock Value', val: '₨' + valStr, bg: '#FDF0DC', color: '#633806' },
             {
               id: 'lowstock' as const,
@@ -1028,7 +1036,8 @@ export default function InventoryPage() {
               const isLow = p.stock === 0 || p.stock <= threshold
               return (
                 <div key={p.id} className="bg-white rounded-xl border overflow-hidden flex flex-col group"
-                  style={{ borderColor: p.stock === 0 ? '#F5C0C0' : p.stock <= threshold ? '#F5C675' : '#E4E2DC' }}>
+                  style={{ borderColor: p.stock === 0 ? '#F5C0C0' : p.stock <= threshold ? '#F5C675' : '#E4E2DC', cursor: (p as any).store_url ? 'pointer' : 'default' }}
+                  onClick={() => { if((p as any).store_url) window.open((p as any).store_url, '_blank') }}>
                   <div className="relative overflow-hidden" style={{ height: 145 }}>
                     <ProdImg p={p} h={145} />
                     {d > 0 && (
