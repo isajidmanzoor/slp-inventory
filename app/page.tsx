@@ -168,6 +168,18 @@ export default function InventoryPage() {
 
   useEffect(() => { if (!authLoading) fetchProfile() }, [authLoading, fetchProfile])
 
+  // ── AUTO SYNC: har 5 minute mein website se live sync ──────────
+  useEffect(() => {
+    if (authLoading) return
+    const interval = setInterval(async () => {
+      try {
+        await fetch('/api/cron/sync-sitemap')
+        await fetchProducts()
+      } catch {}
+    }, 5 * 60 * 1000) // 5 minutes
+    return () => clearInterval(interval)
+  }, [authLoading, fetchProducts])
+
   // Auto-fill profile email from auth session if not yet set
   useEffect(() => {
     if (!authLoading && user?.email && !profileEmail) {
