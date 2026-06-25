@@ -944,11 +944,11 @@ export default function InventoryPage() {
         )}
 
         {/* STATS */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 pt-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 pt-4" style={{gridAutoFlow:"dense"}}>
           {[
             { id: 'all' as const, icon: <Package size={18} />, label: 'Products', val: products.length, bg: '#E8F1FB', color: '#0C447C' },
             { id: 'instock' as const, icon: <Tag size={18} />, label: 'Units in Stock', val: fmt(totalStock), bg: '#E3F5EE', color: '#085041' },
-    { id: 'lowstock' as const, icon: <RefreshCw size={18} />, label: 'Last Synced', val: lastSyncedStr, bg: '#E8F1FB', color: '#1A5FA8' },
+    { id: 'lowstock' as const, icon: <RefreshCw size={18} />, label: 'Last Synced', val: lastSyncedStr, bg: '#E8F1FB', color: '#1A5FA8', span: true },
             { id: 'value' as const, icon: <span style={{fontSize:14,fontWeight:700}}>₨</span>, label: 'Stock Value', val: '₨' + valStr, bg: '#FDF0DC', color: '#633806' },
             {
               id: 'lowstock' as const,
@@ -958,7 +958,7 @@ export default function InventoryPage() {
               color: lowCount + outCount > 0 ? '#9B2B2B' : '#085041',
             },
           ].map((s) => (
-            <button key={s.id} onClick={() => { setActiveStat(s.id); setPage(1) }}
+            <button key={s.id} onClick={() => { setActiveStat(s.id); setPage(1) }} className={(s as any).span ? "col-span-2 sm:col-span-1" : ""}
               className="bg-white rounded-xl border flex items-center gap-2 sm:gap-3 px-2.5 sm:px-3 py-2.5 sm:py-3 transition-all text-left hover:shadow-md min-w-0"
               style={{ borderColor: activeStat === s.id ? s.color : '#E4E2DC', borderWidth: activeStat === s.id ? 2 : 1, background: activeStat === s.id ? s.bg : 'white' }}>
               <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: s.bg, color: s.color }}>{s.icon}</div>
