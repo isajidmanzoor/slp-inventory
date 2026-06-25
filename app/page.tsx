@@ -958,8 +958,8 @@ export default function InventoryPage() {
               color: lowCount + outCount > 0 ? '#9B2B2B' : '#085041',
             },
           ].map((s) => (
-            <button key={s.id} onClick={() => { setActiveStat(s.id); setPage(1) }} className={(s as any).span ? "col-span-2 sm:col-span-1" : ""}
-              className="bg-white rounded-xl border flex items-center gap-2 sm:gap-3 px-2.5 sm:px-3 py-2.5 sm:py-3 transition-all text-left hover:shadow-md min-w-0"
+            <button key={s.id} onClick={() => { setActiveStat(s.id); setPage(1) }}
+              className={`${(s as any).span ? "col-span-2 sm:col-span-1" : ""} bg-white rounded-xl border flex items-center gap-2 sm:gap-3 px-2.5 sm:px-3 py-2.5 sm:py-3 transition-all text-left hover:shadow-md min-w-0"
               style={{ borderColor: activeStat === s.id ? s.color : '#E4E2DC', borderWidth: activeStat === s.id ? 2 : 1, background: activeStat === s.id ? s.bg : 'white' }}>
               <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: s.bg, color: s.color }}>{s.icon}</div>
               <div>
