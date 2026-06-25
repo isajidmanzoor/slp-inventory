@@ -936,7 +936,7 @@ export default function InventoryPage() {
           {[
             { id: 'all' as const, icon: <Package size={18} />, label: 'Products', val: products.length, bg: '#E8F1FB', color: '#0C447C' },
             { id: 'instock' as const, icon: <Tag size={18} />, label: 'Units in Stock', val: fmt(totalStock), bg: '#E3F5EE', color: '#085041' },
-    { id: 'synced' as const, icon: <RefreshCw size={18} />, label: 'Last Synced', val: lastSyncedStr, bg: '#E8F1FB', color: '#1A5FA8' },
+    { id: 'lowstock' as const, icon: <RefreshCw size={18} />, label: 'Last Synced', val: lastSyncedStr, bg: '#E8F1FB', color: '#1A5FA8' },
             { id: 'value' as const, icon: <span style={{fontSize:14,fontWeight:700}}>₨</span>, label: 'Stock Value', val: '₨' + valStr, bg: '#FDF0DC', color: '#633806' },
             {
               id: 'lowstock' as const,
