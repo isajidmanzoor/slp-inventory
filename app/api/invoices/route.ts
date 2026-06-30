@@ -80,6 +80,10 @@ export async function POST(req: NextRequest) {
         delivery_status:   body.delivery_status || 'Pending',
 
         notes:             body.notes || null,
+        sale_person:       body.sale_person || null,
+        warehouse_address: body.warehouse_address || null,
+        shipper_name:      body.shipper_name || null,
+        shipper_phone:     body.shipper_phone || null,
       })
       .select()
       .single()

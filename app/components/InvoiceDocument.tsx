@@ -18,18 +18,12 @@ export default function InvoiceDocument({ invoice, items, viewUrl, paymentQrUrl 
 
       {/* ── HEADER: LOGO + TAGLINE ── */}
       <div className="text-center pt-6 pb-3 px-6">
-        <div className="flex items-center justify-center gap-3">
-          <svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="52" height="52" rx="8" fill="#F0F7FF"/>
-            <path d="M26 8L6 22V44H20V32H32V44H46V22L26 8Z" fill="#1A2A7A"/>
-            <path d="M20 32H32V44H20V32Z" fill="#5BA82E"/>
-            <path d="M26 8L6 22H46L26 8Z" fill="#1A2A7A"/>
-            <circle cx="26" cy="20" r="4" fill="white"/>
-          </svg>
-          <div className="text-left">
-            <div style={{ fontSize:24, fontWeight:900, color:'#1A2A7A', letterSpacing:'1px', lineHeight:1.1, fontFamily:'Arial,sans-serif' }}>SMART LIVING</div>
-            <div style={{ fontSize:12, fontWeight:800, color:'#5BA82E', letterSpacing:'6px', marginTop:1 }}>PAKISTAN</div>
-          </div>
+        <div className="flex items-center justify-center">
+          <img 
+            src="https://smartlivingpakistan.com/wp-content/uploads/2025/07/New-logo-Smart-Living-Pakistan-mobile-7.png.webp"
+            alt="Smart Living Pakistan"
+            style={{ height:60, width:'auto', objectFit:'contain' }}
+          />
         </div>
         <div style={{ fontSize:11, color:'#6B6A66', marginTop:5, fontWeight:500, letterSpacing:'0.3px' }}>
           Complete Finishing &amp; Smart Living Solutions
