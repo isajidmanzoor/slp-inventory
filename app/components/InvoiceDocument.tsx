@@ -17,15 +17,21 @@ export default function InvoiceDocument({ invoice, items, viewUrl, paymentQrUrl 
     <div id="invoice-doc" className="bg-white mx-auto" style={{ maxWidth: 700, width:'100%', color:'#1C1B19', fontFamily:'Arial,Helvetica,sans-serif' }}>
 
       {/* ── HEADER: LOGO + TAGLINE ── */}
-      <div className="text-center pt-8 pb-4 px-6">
-        <div className="flex items-center justify-center gap-2.5">
-          <img src={logoUrl} alt="Smart Living Pakistan" style={{ width:48, height:48, objectFit:'contain' }}/>
+      <div className="text-center pt-6 pb-3 px-6">
+        <div className="flex items-center justify-center gap-3">
+          <svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="52" height="52" rx="8" fill="#F0F7FF"/>
+            <path d="M26 8L6 22V44H20V32H32V44H46V22L26 8Z" fill="#1A2A7A"/>
+            <path d="M20 32H32V44H20V32Z" fill="#5BA82E"/>
+            <path d="M26 8L6 22H46L26 8Z" fill="#1A2A7A"/>
+            <circle cx="26" cy="20" r="4" fill="white"/>
+          </svg>
           <div className="text-left">
-            <div style={{ fontSize:22, fontWeight:800, color:'#1A2A7A', letterSpacing:'0.5px', lineHeight:1 }}>SMART LIVING</div>
-            <div style={{ fontSize:13, fontWeight:700, color:'#5BA82E', letterSpacing:'4px', marginTop:2 }}>PAKISTAN</div>
+            <div style={{ fontSize:24, fontWeight:900, color:'#1A2A7A', letterSpacing:'1px', lineHeight:1.1, fontFamily:'Arial,sans-serif' }}>SMART LIVING</div>
+            <div style={{ fontSize:12, fontWeight:800, color:'#5BA82E', letterSpacing:'6px', marginTop:1 }}>PAKISTAN</div>
           </div>
         </div>
-        <div style={{ fontSize:12, color:'#6B6A66', marginTop:6, fontWeight:500 }}>
+        <div style={{ fontSize:11, color:'#6B6A66', marginTop:5, fontWeight:500, letterSpacing:'0.3px' }}>
           Complete Finishing &amp; Smart Living Solutions
         </div>
       </div>
@@ -124,18 +130,34 @@ export default function InvoiceDocument({ invoice, items, viewUrl, paymentQrUrl 
 
           {/* Gold warranty seal */}
           <div className="flex flex-col items-center justify-center">
-            <div style={{
-              width:78, height:78, borderRadius:'50%',
-              background:'radial-gradient(circle at 35% 30%, #FFE49A, #D9A02B 70%, #B07F1B 100%)',
-              border:'3px solid #B07F1B',
-              display:'flex', alignItems:'center', justifyContent:'center',
-              textAlign:'center', boxShadow:'0 2px 6px rgba(0,0,0,0.15)',
-            }}>
-              <div style={{ fontSize:9, fontWeight:800, color:'#5C3D00', lineHeight:1.25 }}>
-                1 YEAR<br/>WARRANTY<br/>
-                <span style={{ fontSize:7, fontWeight:600 }}>SMART LIVING</span>
-              </div>
-            </div>
+            <svg width="90" height="90" viewBox="0 0 90 90" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <radialGradient id="sealGrad" cx="38%" cy="32%" r="60%">
+                  <stop offset="0%" stopColor="#FFE49A"/>
+                  <stop offset="60%" stopColor="#D9A02B"/>
+                  <stop offset="100%" stopColor="#B07F1B"/>
+                </radialGradient>
+              </defs>
+              {/* Sunburst rays */}
+              {[0,15,30,45,60,75,90,105,120,135,150,165,180,195,210,225,240,255,270,285,300,315,330,345].map((angle, i) => (
+                <line key={i}
+                  x1={45 + 36 * Math.cos(angle * Math.PI / 180)}
+                  y1={45 + 36 * Math.sin(angle * Math.PI / 180)}
+                  x2={45 + 44 * Math.cos(angle * Math.PI / 180)}
+                  y2={45 + 44 * Math.sin(angle * Math.PI / 180)}
+                  stroke="#B07F1B" strokeWidth="2"/>
+              ))}
+              {/* Main circle */}
+              <circle cx="45" cy="45" r="35" fill="url(#sealGrad)" stroke="#B07F1B" strokeWidth="2.5"/>
+              {/* Inner ring */}
+              <circle cx="45" cy="45" r="30" fill="none" stroke="#5C3D00" strokeWidth="0.8" strokeDasharray="2,2"/>
+              {/* Text */}
+              <text x="45" y="33" textAnchor="middle" fontSize="8" fontWeight="900" fill="#5C3D00" fontFamily="Arial">1 YEAR</text>
+              <text x="45" y="43" textAnchor="middle" fontSize="9" fontWeight="900" fill="#5C3D00" fontFamily="Arial">WARRANTY</text>
+              <line x1="28" y1="47" x2="62" y2="47" stroke="#5C3D00" strokeWidth="0.8"/>
+              <text x="45" y="55" textAnchor="middle" fontSize="6.5" fontWeight="800" fill="#5C3D00" fontFamily="Arial">SMART LIVING</text>
+              <text x="45" y="63" textAnchor="middle" fontSize="6.5" fontWeight="800" fill="#5C3D00" fontFamily="Arial">PAKISTAN</text>
+            </svg>
           </div>
 
           {/* Sale person + signature */}
