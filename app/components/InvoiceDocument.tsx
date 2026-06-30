@@ -1,8 +1,7 @@
 'use client'
 import type { Invoice, InvoiceItem } from '@/lib/supabase'
-import { fmtMoney, fmtDate, balanceDue, PAYMENT_STATUS_COLORS, DELIVERY_STATUS_COLORS } from '@/lib/invoice-utils'
-import { InvoiceQR, InvoiceBarcode } from './InvoiceCodes'
-import { Truck, MapPin, Phone, Mail } from 'lucide-react'
+import { fmtMoney, fmtDate, balanceDue } from '@/lib/invoice-utils'
+import { InvoiceQR } from './InvoiceCodes'
 
 export default function InvoiceDocument({ invoice, items, viewUrl, paymentQrUrl }: {
   invoice: Invoice
@@ -10,178 +9,179 @@ export default function InvoiceDocument({ invoice, items, viewUrl, paymentQrUrl 
   viewUrl: string
   paymentQrUrl?: string | null
 }) {
-  const statusStyle   = PAYMENT_STATUS_COLORS[invoice.payment_status]  || { bg:'#F1EFE8', color:'#6B6A66' }
-  const deliveryStyle = invoice.delivery_status ? (DELIVERY_STATUS_COLORS[invoice.delivery_status] || { bg:'#F1EFE8', color:'#6B6A66' }) : null
   const due = balanceDue(invoice)
+  const logoUrl = invoice.company_logo_url
+    || 'https://smartlivingpakistan.com/wp-content/uploads/2025/07/New-logo-Smart-Living-Pakistan-mobile-7.png.webp'
 
   return (
-    <div id="invoice-doc" className="bg-white mx-auto" style={{ maxWidth: 820, width:'100%', color:'#1C1B19' }}>
-      {/* ── HEADER ── */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 p-6 sm:p-8 border-b" style={{ borderColor:'#E4E2DC' }}>
-        <div className="flex items-center gap-3">
-          {invoice.company_logo_url
-            ? <img src={invoice.company_logo_url} alt="Company logo" className="w-14 h-14 rounded-xl object-cover border" style={{ borderColor:'#E4E2DC' }}/>
-            : <img src="https://smartlivingpakistan.com/wp-content/uploads/2025/07/New-logo-Smart-Living-Pakistan-mobile-7.png.webp" alt="SLP" className="w-14 h-14 rounded-xl object-contain"/>
-          }
+    <div id="invoice-doc" className="bg-white mx-auto" style={{ maxWidth: 700, width:'100%', color:'#1C1B19', fontFamily:'Arial,Helvetica,sans-serif' }}>
+
+      {/* ── HEADER: LOGO + TAGLINE ── */}
+      <div className="text-center pt-8 pb-4 px-6">
+        <div className="flex items-center justify-center gap-2.5">
+          <img src={logoUrl} alt="Smart Living Pakistan" style={{ width:48, height:48, objectFit:'contain' }}/>
+          <div className="text-left">
+            <div style={{ fontSize:22, fontWeight:800, color:'#1A2A7A', letterSpacing:'0.5px', lineHeight:1 }}>SMART LIVING</div>
+            <div style={{ fontSize:13, fontWeight:700, color:'#5BA82E', letterSpacing:'4px', marginTop:2 }}>PAKISTAN</div>
+          </div>
+        </div>
+        <div style={{ fontSize:12, color:'#6B6A66', marginTop:6, fontWeight:500 }}>
+          Complete Finishing &amp; Smart Living Solutions
+        </div>
+      </div>
+
+      {/* Green divider line */}
+      <div style={{ height:3, background:'#5BA82E', margin:'0 0 18px' }}/>
+
+      <div className="px-6 sm:px-8">
+        {/* ── ORDER NUMBER / DATE ── */}
+        <div className="flex justify-between items-center pb-4 mb-5" style={{ borderBottom:'1px solid #E4E2DC' }}>
+          <div style={{ fontSize:13 }}>
+            <span style={{ fontWeight:700 }}>Order Number:</span>{' '}
+            <span style={{ color:'#3E3D3A' }}>{invoice.order_id || invoice.invoice_number}</span>
+          </div>
+          <div style={{ fontSize:13, display:'flex', alignItems:'center', gap:6 }}>
+            <span style={{ fontWeight:700 }}>Order Date:</span>
+            <span style={{ color:'#3E3D3A' }}>{fmtDate(invoice.invoice_date)}</span>
+          </div>
+        </div>
+
+        {/* ── CUSTOMER + SHIPPER DETAILS (side by side) ── */}
+        <div className="grid grid-cols-2 gap-6 mb-6">
           <div>
-            <div className="text-lg font-bold">Smart Living Pakistan</div>
-            <div className="text-xs" style={{ color:'#9C9B97' }}>smartlivingpakistan.com</div>
+            <div style={{ fontSize:13, fontWeight:800, marginBottom:8, letterSpacing:'0.3px' }}>CUSTOMER DETAILS</div>
+            <DetailRow label="Name" value={invoice.customer_name || '—'}/>
+            <DetailRow label="Phone Number" value={invoice.customer_phone || '—'}/>
+            <DetailRow label="Address" value={invoice.billing_address || invoice.shipping_address || '—'}/>
+          </div>
+          <div>
+            <div style={{ fontSize:13, fontWeight:800, marginBottom:8, letterSpacing:'0.3px' }}>SHIPPER DETAILS</div>
+            <DetailRow label="Name" value={invoice.shipper_name || 'Smart Living Pvt LTD.'}/>
+            <DetailRow label="Phone Number" value={invoice.shipper_phone || '+92 305 7015615'}/>
+            <DetailRow label="Address" value={invoice.warehouse_address || 'Warehouse #1, Gulberg 3'}/>
           </div>
         </div>
-        <div className="text-left sm:text-right">
-          <div className="text-2xl font-extrabold tracking-tight" style={{ color:'#1A5FA8' }}>INVOICE</div>
-          <div className="text-sm font-semibold mt-1">{invoice.invoice_number}</div>
-          <span className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold"
-            style={{ background: statusStyle.bg, color: statusStyle.color }}>
-            {invoice.payment_status}
-          </span>
-        </div>
-      </div>
 
-      {/* ── META GRID: dates / order / customer ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 p-6 sm:p-8 border-b" style={{ borderColor:'#E4E2DC' }}>
-        <div>
-          <div className="text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color:'#9C9B97' }}>Invoice Details</div>
-          <Row label="Invoice Date" value={fmtDate(invoice.invoice_date)}/>
-          <Row label="Due Date"     value={fmtDate(invoice.due_date)}/>
-          <Row label="Order ID"     value={invoice.order_id || '—'}/>
-        </div>
-        <div>
-          <div className="text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color:'#9C9B97' }}>Bill To</div>
-          <div className="text-sm font-semibold">{invoice.customer_name}</div>
-          {invoice.customer_email && (
-            <div className="text-xs flex items-center gap-1.5 mt-1" style={{ color:'#6B6A66' }}>
-              <Mail size={11}/> {invoice.customer_email}
-            </div>
-          )}
-          {invoice.customer_phone && (
-            <div className="text-xs flex items-center gap-1.5 mt-1" style={{ color:'#6B6A66' }}>
-              <Phone size={11}/> {invoice.customer_phone}
-            </div>
-          )}
-          {invoice.billing_address && (
-            <div className="text-xs flex items-start gap-1.5 mt-1" style={{ color:'#6B6A66' }}>
-              <MapPin size={11} className="mt-0.5 flex-shrink-0"/> <span>{invoice.billing_address}</span>
-            </div>
-          )}
-        </div>
-        <div>
-          <div className="text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color:'#9C9B97' }}>Ship To</div>
-          <div className="text-xs flex items-start gap-1.5" style={{ color:'#6B6A66' }}>
-            <Truck size={11} className="mt-0.5 flex-shrink-0"/>
-            <span>{invoice.shipping_address || invoice.billing_address || '—'}</span>
-          </div>
-          {invoice.courier_name && <Row label="Courier" value={invoice.courier_name}/>}
-          {invoice.tracking_number && <Row label="Tracking #" value={invoice.tracking_number}/>}
-          {deliveryStyle && invoice.delivery_status && (
-            <span className="inline-block mt-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold"
-              style={{ background: deliveryStyle.bg, color: deliveryStyle.color }}>
-              {invoice.delivery_status}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* ── LINE ITEMS ── */}
-      <div className="p-6 sm:p-8">
-        <div className="overflow-x-auto -mx-1">
-          <table className="w-full text-sm" style={{ minWidth: 520 }}>
-            <thead>
-              <tr style={{ background:'#F5F4F0' }}>
-                <th className="text-left font-bold py-2 px-3 rounded-l-lg" style={{ fontSize:11, color:'#6B6A66' }}>ITEM</th>
-                <th className="text-left font-bold py-2 px-3" style={{ fontSize:11, color:'#6B6A66' }}>SKU</th>
-                <th className="text-center font-bold py-2 px-3" style={{ fontSize:11, color:'#6B6A66' }}>QTY</th>
-                <th className="text-right font-bold py-2 px-3" style={{ fontSize:11, color:'#6B6A66' }}>PRICE</th>
-                <th className="text-right font-bold py-2 px-3" style={{ fontSize:11, color:'#6B6A66' }}>DISC.</th>
-                <th className="text-right font-bold py-2 px-3" style={{ fontSize:11, color:'#6B6A66' }}>TAX %</th>
-                <th className="text-right font-bold py-2 px-3 rounded-r-lg" style={{ fontSize:11, color:'#6B6A66' }}>TOTAL</th>
+        {/* ── PRODUCT TABLE ── */}
+        <table className="w-full mb-6" style={{ borderCollapse:'collapse', fontSize:13 }}>
+          <thead>
+            <tr style={{ background:'#1A2A7A' }}>
+              <th style={{ color:'#fff', textAlign:'left', padding:'9px 12px', fontWeight:700, fontSize:12, borderRadius:'6px 0 0 0' }}>Product</th>
+              <th style={{ color:'#fff', textAlign:'center', padding:'9px 8px', fontWeight:700, fontSize:12 }}>Quantity</th>
+              <th style={{ color:'#fff', textAlign:'right', padding:'9px 8px', fontWeight:700, fontSize:12 }}>Original Price</th>
+              <th style={{ color:'#fff', textAlign:'right', padding:'9px 12px', fontWeight:700, fontSize:12, borderRadius:'0 6px 0 0' }}>Discount Price</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((it, i) => (
+              <tr key={i} style={{ borderBottom:'1px solid #EFEEE9' }}>
+                <td style={{ padding:'8px 12px', color:'#1C1B19' }}>{it.product_name}</td>
+                <td style={{ padding:'8px', textAlign:'center', color:'#3E3D3A' }}>{it.quantity}</td>
+                <td style={{ padding:'8px', textAlign:'right', color:'#3E3D3A' }}>
+                  {it.unit_price ? Math.round(it.unit_price + it.discount).toLocaleString() : '—'}
+                </td>
+                <td style={{ padding:'8px 12px', textAlign:'right', color:'#1C1B19', fontWeight:600 }}>
+                  {Math.round(it.unit_price).toLocaleString()}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {items.map((it, i) => (
-                <tr key={i} className="border-b" style={{ borderColor:'#F0EEE8' }}>
-                  <td className="py-2.5 px-3 font-medium">{it.product_name}</td>
-                  <td className="py-2.5 px-3" style={{ color:'#9C9B97', fontSize:12 }}>{it.sku || '—'}</td>
-                  <td className="py-2.5 px-3 text-center">{it.quantity}</td>
-                  <td className="py-2.5 px-3 text-right">{fmtMoney(it.unit_price, 'PKR')}</td>
-                  <td className="py-2.5 px-3 text-right" style={{ color:'#9B2B2B' }}>{it.discount > 0 ? `-${fmtMoney(it.discount, 'PKR')}` : '—'}</td>
-                  <td className="py-2.5 px-3 text-right">{it.tax_pct > 0 ? `${it.tax_pct}%` : '—'}</td>
-                  <td className="py-2.5 px-3 text-right font-semibold">{fmtMoney(it.line_total, 'PKR')}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
 
-        {/* ── TOTALS + CODES ── */}
-        <div className="flex flex-col sm:flex-row justify-between gap-6 mt-6">
-          <div className="flex flex-wrap gap-6 items-start">
-            <InvoiceBarcode value={invoice.invoice_number}/>
-            <InvoiceQR value={viewUrl} size={84} label="Scan to view invoice"/>
-            {paymentQrUrl && (
-              <div className="flex flex-col items-center gap-1">
-                <img src={paymentQrUrl} width={84} height={84} alt="Payment QR" style={{ borderRadius:8, border:'1px solid #E4E2DC' }}/>
-                <span style={{ fontSize:9, color:'#9C9B97' }}>Scan to pay</span>
-              </div>
+        {/* ── BILL SUMMARY ── */}
+        <table className="w-full mb-7" style={{ borderCollapse:'collapse', fontSize:13 }}>
+          <tbody>
+            <tr style={{ borderBottom:'1px solid #EFEEE9' }}>
+              <td style={{ padding:'8px 12px', fontWeight:700 }}>Discounted Bill</td>
+              <td style={{ padding:'8px 12px', textAlign:'center', fontWeight:700 }}>{fmtMoney(invoice.grand_total, invoice.currency)}/-</td>
+            </tr>
+            {invoice.amount_paid > 0 && (
+              <tr style={{ borderBottom:'1px solid #EFEEE9' }}>
+                <td style={{ padding:'8px 12px', fontWeight:700 }}>Advance</td>
+                <td style={{ padding:'8px 12px', textAlign:'center', fontWeight:700 }}>{fmtMoney(invoice.amount_paid, invoice.currency)}/-</td>
+              </tr>
             )}
+            <tr>
+              <td style={{ padding:'8px 12px', fontWeight:800 }}>Remaining Total Bill have to Pay</td>
+              <td style={{ padding:'8px 12px', textAlign:'center', fontWeight:800, color:'#9B2B2B' }}>{fmtMoney(due, invoice.currency)}/-</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* ── WARRANTY / TERMS / SEAL / SIGNATURE ── */}
+        <div className="grid grid-cols-3 gap-4 items-start pb-6">
+          <div>
+            <div style={{ fontSize:12, fontWeight:800, marginBottom:4 }}>WARRANTY</div>
+            <div style={{ fontSize:11, color:'#3E3D3A', lineHeight:1.5 }}>
+              1 year Warranty.<br/>
+              <span style={{ fontSize:10, color:'#9C9B97' }}>(Product Burn &amp; Damage not included)</span>
+            </div>
+            <div style={{ fontSize:12, fontWeight:800, marginTop:12, marginBottom:4 }}>TERMS &amp; CONDITIONS</div>
+            <div style={{ fontSize:11, color:'#3E3D3A', lineHeight:1.5 }}>
+              In case of return, Customer has to send us.
+            </div>
           </div>
 
-          <div className="w-full sm:w-72 space-y-1.5 text-sm">
-            <TotalRow label="Subtotal" value={fmtMoney(invoice.subtotal, 'PKR')}/>
-            {invoice.discount_amount > 0 && <TotalRow label="Discount" value={`-${fmtMoney(invoice.discount_amount, 'PKR')}`} color="#9B2B2B"/>}
-            {invoice.tax_amount > 0 && <TotalRow label="Tax" value={fmtMoney(invoice.tax_amount, 'PKR')}/>}
-            {invoice.shipping_charges > 0 && <TotalRow label="Shipping" value={fmtMoney(invoice.shipping_charges, 'PKR')}/>}
-            {invoice.delivery_tax > 0 && <TotalRow label="Delivery Tax" value={fmtMoney(invoice.delivery_tax, 'PKR')}/>}
-            <div className="pt-2 mt-1 border-t" style={{ borderColor:'#1A5FA8' }}>
-              <TotalRow label="Grand Total" value={fmtMoney(invoice.grand_total, 'PKR')} bold big/>
+          {/* Gold warranty seal */}
+          <div className="flex flex-col items-center justify-center">
+            <div style={{
+              width:78, height:78, borderRadius:'50%',
+              background:'radial-gradient(circle at 35% 30%, #FFE49A, #D9A02B 70%, #B07F1B 100%)',
+              border:'3px solid #B07F1B',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              textAlign:'center', boxShadow:'0 2px 6px rgba(0,0,0,0.15)',
+            }}>
+              <div style={{ fontSize:9, fontWeight:800, color:'#5C3D00', lineHeight:1.25 }}>
+                1 YEAR<br/>WARRANTY<br/>
+                <span style={{ fontSize:7, fontWeight:600 }}>SMART LIVING</span>
+              </div>
             </div>
-            {invoice.amount_paid > 0 && <TotalRow label="Amount Paid" value={fmtMoney(invoice.amount_paid, 'PKR')} color="#0D6E4F"/>}
-            {due > 0 && <TotalRow label="Balance Due" value={fmtMoney(due, 'PKR')} color="#9B2B2B" bold/>}
+          </div>
+
+          {/* Sale person + signature */}
+          <div className="text-right">
+            <div style={{ fontSize:11, color:'#3E3D3A' }}>
+              Your Sale Person: <span style={{ fontWeight:800 }}>{invoice.sale_person || '—'}</span>
+            </div>
+            <div style={{ height:40, display:'flex', alignItems:'flex-end', justifyContent:'flex-end', marginTop:4 }}>
+              {invoice.sale_person && (
+                <svg width="70" height="32" viewBox="0 0 70 32">
+                  <path d="M4 24 Q 14 6, 22 20 T 38 14 Q 44 8, 50 18 T 66 10"
+                    stroke="#1A2A7A" strokeWidth="2" fill="none" strokeLinecap="round"/>
+                </svg>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* ── PAYMENT INFO ── */}
-        {(invoice.payment_method || invoice.transaction_id) && (
-          <div className="mt-6 p-4 rounded-xl" style={{ background:'#F5F4F0' }}>
-            <div className="text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color:'#9C9B97' }}>Payment Information</div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-              {invoice.payment_method && <Row label="Method" value={invoice.payment_method}/>}
-              {invoice.transaction_id && <Row label="Transaction ID" value={invoice.transaction_id}/>}
-              {invoice.payment_date   && <Row label="Payment Date" value={fmtDate(invoice.payment_date)}/>}
-            </div>
+        {/* ── FOOTER: QR CODES ── */}
+        <div className="flex justify-between items-end pb-8" style={{ borderTop:'1px solid #E4E2DC', paddingTop:18 }}>
+          <div className="flex flex-col items-start gap-1.5">
+            <InvoiceQR value={viewUrl + '?loc=warehouse'} size={58}/>
+            <span style={{ fontSize:10, color:'#6B6A66', lineHeight:1.3 }}>
+              Smart Living<br/>Pakistan Warehouse
+            </span>
           </div>
-        )}
-
-        {/* ── NOTES ── */}
-        {invoice.notes && (
-          <div className="mt-6">
-            <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color:'#9C9B97' }}>Notes &amp; Terms</div>
-            <p className="text-xs whitespace-pre-wrap" style={{ color:'#6B6A66' }}>{invoice.notes}</p>
+          <div className="text-center" style={{ fontSize:11, color:'#6B6A66' }}>
+            www.Smartlivingpakistan.com
           </div>
-        )}
-      </div>
-
-      <div className="text-center py-5 border-t text-[11px]" style={{ borderColor:'#E4E2DC', color:'#9C9B97' }}>
-        Thank you for shopping with Smart Living Pakistan
+          <div className="flex flex-col items-end gap-1.5">
+            <InvoiceQR value={viewUrl + '?loc=store'} size={58}/>
+            <span style={{ fontSize:10, color:'#6B6A66', textAlign:'right', lineHeight:1.3 }}>
+              Smart Living<br/>Pakistan Store
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   )
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between gap-3 text-xs mt-1">
-      <span style={{ color:'#9C9B97' }}>{label}</span>
-      <span className="font-medium text-right">{value}</span>
-    </div>
-  )
-}
-
-function TotalRow({ label, value, bold, big, color }: { label:string; value:string; bold?:boolean; big?:boolean; color?:string }) {
-  return (
-    <div className="flex justify-between items-baseline">
-      <span style={{ color: color || '#6B6A66', fontWeight: bold ? 700 : 500, fontSize: big ? 15 : 13 }}>{label}</span>
-      <span style={{ color: color || '#1C1B19', fontWeight: bold ? 800 : 600, fontSize: big ? 18 : 13 }}>{value}</span>
+    <div className="flex" style={{ fontSize:12, marginBottom:4 }}>
+      <span style={{ color:'#6B6A66', minWidth:96 }}>{label}</span>
+      <span style={{ color:'#1C1B19', fontWeight:500 }}>{value}</span>
     </div>
   )
 }

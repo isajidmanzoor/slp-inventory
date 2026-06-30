@@ -50,6 +50,7 @@ export default function NewInvoicePage() {
   const [deliveryStatus,  setDeliveryStatus]  = useState('Pending')
 
   const [notes, setNotes] = useState('')
+  const [salePerson, setSalePerson] = useState('')
 
   useEffect(() => {
     ;(async () => {
@@ -133,6 +134,7 @@ export default function NewInvoicePage() {
           tracking_number: trackingNumber || null,
           delivery_status: deliveryStatus,
           notes: notes || null,
+          sale_person: salePerson || null,
         }),
       })
       const data = await res.json()
@@ -347,6 +349,12 @@ export default function NewInvoicePage() {
         </Card>
 
         {/* ── NOTES ── */}
+        <Card title="Sale Person">
+          <Field label="Sale Person Name">
+            <input className={inp} style={{color:"#111827",background:"#fff",WebkitTextFillColor:"#111827"}} value={salePerson} onChange={e => setSalePerson(e.target.value)} placeholder="e.g. Sohail" />
+          </Field>
+        </Card>
+
         <Card title="Notes / Terms & Conditions">
           <textarea className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} rows={3} value={notes} onChange={e => setNotes(e.target.value)}
             placeholder="e.g. Goods once sold cannot be returned. Warranty void if seal broken."/>

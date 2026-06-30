@@ -115,6 +115,10 @@ export type Invoice = {
   delivery_status: 'Pending' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Returned' | null
 
   notes: string | null
+  sale_person?: string | null
+  warehouse_address?: string | null
+  shipper_name?: string | null
+  shipper_phone?: string | null
   public_token: string
 
   created_at?: string
