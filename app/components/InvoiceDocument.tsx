@@ -108,22 +108,20 @@ export default function InvoiceDocument({ invoice, items, viewUrl, paymentQrUrl 
           </tbody>
         </table>
 
-        {/* ── WARRANTY / TERMS / SEAL / SIGNATURE ── */}
-        <div className="grid grid-cols-3 gap-4 items-start pb-6">
-          <div>
+        {/* ── WARRANTY / TERMS / SEAL ── */}
+        <div className="flex items-center justify-between pb-6" style={{ gap:16 }}>
+          <div style={{ flex:1 }}>
             <div style={{ fontSize:12, fontWeight:800, marginBottom:4 }}>WARRANTY</div>
             <div style={{ fontSize:11, color:'#3E3D3A', lineHeight:1.5 }}>
               1 year Warranty.<br/>
               <span style={{ fontSize:10, color:'#9C9B97' }}>(Product Burn &amp; Damage not included)</span>
             </div>
-            <div style={{ fontSize:12, fontWeight:800, marginTop:12, marginBottom:4 }}>TERMS &amp; CONDITIONS</div>
+            <div style={{ fontSize:12, fontWeight:800, marginTop:10, marginBottom:4 }}>TERMS &amp; CONDITIONS</div>
             <div style={{ fontSize:11, color:'#3E3D3A', lineHeight:1.5 }}>
               In case of return, Customer has to send us.
             </div>
           </div>
-
-          {/* Gold warranty seal */}
-          <div className="flex flex-col items-center justify-center">
+          <div style={{ flexShrink:0 }}>
             <svg width="90" height="90" viewBox="0 0 90 90" xmlns="http://www.w3.org/2000/svg">
               <defs>
                 <radialGradient id="sealGrad" cx="38%" cy="32%" r="60%">
@@ -132,7 +130,6 @@ export default function InvoiceDocument({ invoice, items, viewUrl, paymentQrUrl 
                   <stop offset="100%" stopColor="#B07F1B"/>
                 </radialGradient>
               </defs>
-              {/* Sunburst rays */}
               {[0,15,30,45,60,75,90,105,120,135,150,165,180,195,210,225,240,255,270,285,300,315,330,345].map((angle, i) => (
                 <line key={i}
                   x1={45 + 36 * Math.cos(angle * Math.PI / 180)}
@@ -141,32 +138,14 @@ export default function InvoiceDocument({ invoice, items, viewUrl, paymentQrUrl 
                   y2={45 + 44 * Math.sin(angle * Math.PI / 180)}
                   stroke="#B07F1B" strokeWidth="2"/>
               ))}
-              {/* Main circle */}
               <circle cx="45" cy="45" r="35" fill="url(#sealGrad)" stroke="#B07F1B" strokeWidth="2.5"/>
-              {/* Inner ring */}
               <circle cx="45" cy="45" r="30" fill="none" stroke="#5C3D00" strokeWidth="0.8" strokeDasharray="2,2"/>
-              {/* Text */}
               <text x="45" y="33" textAnchor="middle" fontSize="8" fontWeight="900" fill="#5C3D00" fontFamily="Arial">1 YEAR</text>
               <text x="45" y="43" textAnchor="middle" fontSize="9" fontWeight="900" fill="#5C3D00" fontFamily="Arial">WARRANTY</text>
               <line x1="28" y1="47" x2="62" y2="47" stroke="#5C3D00" strokeWidth="0.8"/>
               <text x="45" y="55" textAnchor="middle" fontSize="6.5" fontWeight="800" fill="#5C3D00" fontFamily="Arial">SMART LIVING</text>
               <text x="45" y="63" textAnchor="middle" fontSize="6.5" fontWeight="800" fill="#5C3D00" fontFamily="Arial">PAKISTAN</text>
             </svg>
-          </div>
-
-          {/* Sale person + signature */}
-          <div className="text-right">
-            <div style={{ fontSize:11, color:'#3E3D3A' }}>
-              Your Sale Person: <span style={{ fontWeight:800 }}>{invoice.sale_person || '—'}</span>
-            </div>
-            <div style={{ height:40, display:'flex', alignItems:'flex-end', justifyContent:'flex-end', marginTop:4 }}>
-              {invoice.sale_person && (
-                <svg width="70" height="32" viewBox="0 0 70 32">
-                  <path d="M4 24 Q 14 6, 22 20 T 38 14 Q 44 8, 50 18 T 66 10"
-                    stroke="#1A2A7A" strokeWidth="2" fill="none" strokeLinecap="round"/>
-                </svg>
-              )}
-            </div>
           </div>
         </div>
 
