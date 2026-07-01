@@ -108,21 +108,25 @@ export default function InvoiceDocument({ invoice, items, viewUrl, paymentQrUrl 
           </tbody>
         </table>
 
-        {/* ── WARRANTY / TERMS / SEAL ── */}
-        <div className="flex items-center justify-between pb-6" style={{ gap:16 }}>
-          <div style={{ flex:1 }}>
-            <div style={{ fontSize:12, fontWeight:800, marginBottom:4 }}>WARRANTY</div>
-            <div style={{ fontSize:11, color:'#3E3D3A', lineHeight:1.5 }}>
+        {/* ── WARRANTY + SEAL + QR CODES — ALL ONE ROW ── */}
+        <div style={{ borderTop:'1px solid #E4E2DC', paddingTop:14, paddingBottom:14, display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
+
+          {/* Left: Warranty text */}
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontSize:12, fontWeight:800, marginBottom:3 }}>WARRANTY</div>
+            <div style={{ fontSize:10, color:'#3E3D3A', lineHeight:1.4 }}>
               1 year Warranty.<br/>
-              <span style={{ fontSize:10, color:'#9C9B97' }}>(Product Burn &amp; Damage not included)</span>
+              <span style={{ fontSize:9, color:'#9C9B97' }}>(Product Burn &amp; Damage not included)</span>
             </div>
-            <div style={{ fontSize:12, fontWeight:800, marginTop:10, marginBottom:4 }}>TERMS &amp; CONDITIONS</div>
-            <div style={{ fontSize:11, color:'#3E3D3A', lineHeight:1.5 }}>
+            <div style={{ fontSize:12, fontWeight:800, marginTop:8, marginBottom:3 }}>TERMS &amp; CONDITIONS</div>
+            <div style={{ fontSize:10, color:'#3E3D3A', lineHeight:1.4 }}>
               In case of return, Customer has to send us.
             </div>
           </div>
+
+          {/* Center: Gold seal */}
           <div style={{ flexShrink:0 }}>
-            <svg width="90" height="90" viewBox="0 0 90 90" xmlns="http://www.w3.org/2000/svg">
+            <svg width="80" height="80" viewBox="0 0 90 90" xmlns="http://www.w3.org/2000/svg">
               <defs>
                 <radialGradient id="sealGrad" cx="38%" cy="32%" r="60%">
                   <stop offset="0%" stopColor="#FFE49A"/>
@@ -147,22 +151,26 @@ export default function InvoiceDocument({ invoice, items, viewUrl, paymentQrUrl 
               <text x="45" y="63" textAnchor="middle" fontSize="6.5" fontWeight="800" fill="#5C3D00" fontFamily="Arial">PAKISTAN</text>
             </svg>
           </div>
+
+          {/* Right: QR codes */}
+          <div style={{ display:'flex', gap:12, alignItems:'flex-end', flexShrink:0 }}>
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
+              <InvoiceQR value={viewUrl + '?loc=warehouse'} size={52}/>
+              <span style={{ fontSize:8, color:'#6B6A66', textAlign:'center', lineHeight:1.3 }}>Smart Living<br/>Pakistan Warehouse</span>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
+              <InvoiceQR value="https://smartlivingpakistan.com/shop" size={52}/>
+              <span style={{ fontSize:8, color:'#6B6A66', textAlign:'center', lineHeight:1.3 }}>Smart Living<br/>Pakistan Store</span>
+            </div>
+          </div>
         </div>
 
-        {/* ── FOOTER: QR CODES ── */}
-        <div style={{ borderTop:'1px solid #E4E2DC', paddingTop:12, paddingBottom:12, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
-            <InvoiceQR value={viewUrl + '?loc=warehouse'} size={56}/>
-            <span style={{ fontSize:9, color:'#6B6A66', textAlign:'center', lineHeight:1.3 }}>Smart Living<br/>Pakistan Warehouse</span>
-          </div>
+        {/* Website link */}
+        <div style={{ textAlign:'center', paddingBottom:10 }}>
           <a href="https://www.smartlivingpakistan.com" target="_blank" rel="noopener noreferrer"
-            style={{ fontSize:11, color:'#1A2A7A', fontWeight:600, textDecoration:'underline', textAlign:'center' }}>
+            style={{ fontSize:11, color:'#1A2A7A', fontWeight:600, textDecoration:'underline' }}>
             www.Smartlivingpakistan.com
           </a>
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
-            <InvoiceQR value="https://smartlivingpakistan.com/shop" size={56}/>
-            <span style={{ fontSize:9, color:'#6B6A66', textAlign:'center', lineHeight:1.3 }}>Smart Living<br/>Pakistan Store</span>
-          </div>
         </div>
       </div>
     </div>
