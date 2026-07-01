@@ -150,21 +150,18 @@ export default function InvoiceDocument({ invoice, items, viewUrl, paymentQrUrl 
         </div>
 
         {/* ── FOOTER: QR CODES ── */}
-        <div className="flex justify-between items-end pb-8" style={{ borderTop:'1px solid #E4E2DC', paddingTop:18 }}>
-          <div className="flex flex-col items-start gap-1.5">
-            <InvoiceQR value={viewUrl + '?loc=warehouse'} size={58}/>
-            <span style={{ fontSize:10, color:'#6B6A66', lineHeight:1.3 }}>
-              Smart Living<br/>Pakistan Warehouse
-            </span>
+        <div style={{ borderTop:'1px solid #E4E2DC', paddingTop:12, paddingBottom:12, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
+            <InvoiceQR value={viewUrl + '?loc=warehouse'} size={56}/>
+            <span style={{ fontSize:9, color:'#6B6A66', textAlign:'center', lineHeight:1.3 }}>Smart Living<br/>Pakistan Warehouse</span>
           </div>
-          <div className="text-center" style={{ fontSize:11, color:'#6B6A66' }}>
+          <a href="https://www.smartlivingpakistan.com" target="_blank" rel="noopener noreferrer"
+            style={{ fontSize:11, color:'#1A2A7A', fontWeight:600, textDecoration:'underline', textAlign:'center' }}>
             www.Smartlivingpakistan.com
-          </div>
-          <div className="flex flex-col items-end gap-1.5">
-            <InvoiceQR value={viewUrl + '?loc=store'} size={58}/>
-            <span style={{ fontSize:10, color:'#6B6A66', textAlign:'right', lineHeight:1.3 }}>
-              Smart Living<br/>Pakistan Store
-            </span>
+          </a>
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
+            <InvoiceQR value="https://smartlivingpakistan.com/shop" size={56}/>
+            <span style={{ fontSize:9, color:'#6B6A66', textAlign:'center', lineHeight:1.3 }}>Smart Living<br/>Pakistan Store</span>
           </div>
         </div>
       </div>
