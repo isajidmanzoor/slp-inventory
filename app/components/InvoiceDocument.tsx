@@ -14,7 +14,7 @@ export default function InvoiceDocument({ invoice, items, viewUrl, paymentQrUrl 
     || 'https://smartlivingpakistan.com/wp-content/uploads/2025/07/New-logo-Smart-Living-Pakistan-mobile-7.png.webp'
 
   return (
-    <div id="invoice-doc" className="bg-white mx-auto" style={{ maxWidth: 700, width:'100%', color:'#1C1B19', fontFamily:'Arial,Helvetica,sans-serif' }}>
+    <div id="invoice-doc" className="bg-white mx-auto" style={{ maxWidth: 700, width:'100%', color:'#1C1B19', fontFamily:'Arial,Helvetica,sans-serif', minHeight:'297mm', display:'flex', flexDirection:'column' }}>
 
       {/* ── HEADER: LOGO + TAGLINE ── */}
       <div className="text-center pt-6 pb-3 px-6">
@@ -33,7 +33,7 @@ export default function InvoiceDocument({ invoice, items, viewUrl, paymentQrUrl 
       {/* Green divider line */}
       <div style={{ height:3, background:'#5BA82E', margin:'0 0 18px' }}/>
 
-      <div className="px-6 sm:px-8">
+      <div className="px-6 sm:px-8" style={{ flex:1, display:"flex", flexDirection:"column" }}>
         {/* ── ORDER NUMBER / DATE ── */}
         <div className="flex justify-between items-center pb-4 mb-5" style={{ borderBottom:'1px solid #E4E2DC' }}>
           <div style={{ fontSize:13 }}>
@@ -165,8 +165,8 @@ export default function InvoiceDocument({ invoice, items, viewUrl, paymentQrUrl 
           </div>
         </div>
 
-        {/* Website link */}
-        <div style={{ textAlign:'center', paddingBottom:10 }}>
+        {/* Website link - stuck to bottom */}
+        <div style={{ marginTop:'auto', textAlign:'center', paddingBottom:12, paddingTop:8 }}>
           <a href="https://www.smartlivingpakistan.com" target="_blank" rel="noopener noreferrer"
             style={{ fontSize:11, color:'#1A2A7A', fontWeight:600, textDecoration:'underline' }}>
             www.Smartlivingpakistan.com

@@ -26,7 +26,10 @@ html { scroll-behavior: smooth; }
 
 /* ── Invoice print layout ── */
 @media print {
-  @page { size: A4; margin: 12mm; }
-  body { background: #fff !important; }
-  #invoice-doc { box-shadow: none !important; border: none !important; max-width: 100% !important; }
+  @page { size: A4; margin: 10mm; }
+  body { background: #fff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+  #invoice-doc { box-shadow: none !important; border: none !important; max-width: 100% !important; width: 100% !important; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  .print\:hidden { display: none !important; }
+  a { color: inherit !important; }
 }
