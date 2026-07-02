@@ -34,25 +34,29 @@ export default function InvoiceDocument({ invoice, items, viewUrl, paymentQrUrl 
       <div style={{ height:3, background:'#5BA82E', margin:'0 0 18px' }}/>
 
       <div className="px-6 sm:px-8" style={{ flex:1, display:"flex", flexDirection:"column" }}>
-        {/* ── ORDER + SHIPPER (left=order, right=shipper) / CUSTOMER below left ── */}
-        <div className="grid grid-cols-2 gap-6 mb-6">
-          {/* LEFT: Order Number + Date + Customer Details */}
+        {/* ── ORDER NUMBER / DATE — top row ── */}
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:13, paddingBottom:12, marginBottom:12, borderBottom:'1px solid #E4E2DC' }}>
           <div>
-            <div style={{ fontSize:13, marginBottom:6, paddingBottom:6, borderBottom:'1px solid #E4E2DC' }}>
-              <span style={{ fontWeight:700 }}>Order Number:</span>{' '}
-              <span style={{ color:'#3E3D3A' }}>{invoice.order_id || invoice.invoice_number}</span>
-            </div>
-            <div style={{ fontSize:13, marginBottom:12 }}>
-              <span style={{ fontWeight:700 }}>Order Date:</span>{' '}
-              <span style={{ color:'#3E3D3A' }}>{fmtDate(invoice.invoice_date)}</span>
-            </div>
+            <span style={{ fontWeight:700 }}>Order Number:</span>{' '}
+            <span style={{ color:'#3E3D3A' }}>{invoice.order_id || invoice.invoice_number}</span>
+          </div>
+          <div>
+            <span style={{ fontWeight:700 }}>Order Date:</span>{' '}
+            <span style={{ color:'#3E3D3A' }}>{fmtDate(invoice.invoice_date)}</span>
+          </div>
+        </div>
+
+        {/* ── CUSTOMER (left) + SHIPPER (right, indented) ── */}
+        <div style={{ display:'flex', gap:24, marginBottom:24 }}>
+          {/* LEFT: Customer Details */}
+          <div style={{ flex:1 }}>
             <div style={{ fontSize:13, fontWeight:800, marginBottom:8, letterSpacing:'0.3px' }}>CUSTOMER DETAILS</div>
             <DetailRow label="Name" value={invoice.customer_name || '—'}/>
             <DetailRow label="Phone Number" value={invoice.customer_phone || '—'}/>
             <DetailRow label="Address" value={invoice.billing_address || invoice.shipping_address || '—'}/>
           </div>
-          {/* RIGHT: Shipper Details (below order date area) */}
-          <div style={{ paddingTop:52 }}>
+          {/* RIGHT: Shipper Details */}
+          <div style={{ flex:1, paddingLeft:24, borderLeft:'1px solid #F0EEE8' }}>
             <div style={{ fontSize:13, fontWeight:800, marginBottom:8, letterSpacing:'0.3px' }}>SHIPPER DETAILS</div>
             <DetailRow label="Name" value={invoice.shipper_name || 'Smart Living Pvt LTD.'}/>
             <DetailRow label="Phone Number" value={invoice.shipper_phone || '+92 305 7015615'}/>
