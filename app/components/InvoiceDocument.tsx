@@ -117,7 +117,7 @@ export default function InvoiceDocument({ invoice, items, viewUrl, paymentQrUrl 
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ fontSize:12, fontWeight:800, marginBottom:3 }}>WARRANTY</div>
             <div style={{ fontSize:10, color:'#3E3D3A', lineHeight:1.4 }}>
-              1 year Warranty.<br/>
+              {(invoice as any).warranty_years || '1'} year Warranty.<br/>
               <span style={{ fontSize:9, color:'#9C9B97' }}>(Product Burn &amp; Damage not included)</span>
             </div>
             <div style={{ fontSize:12, fontWeight:800, marginTop:8, marginBottom:3 }}>TERMS &amp; CONDITIONS</div>
@@ -146,7 +146,7 @@ export default function InvoiceDocument({ invoice, items, viewUrl, paymentQrUrl 
               ))}
               <circle cx="45" cy="45" r="35" fill="url(#sealGrad)" stroke="#B07F1B" strokeWidth="2.5"/>
               <circle cx="45" cy="45" r="30" fill="none" stroke="#5C3D00" strokeWidth="0.8" strokeDasharray="2,2"/>
-              <text x="45" y="33" textAnchor="middle" fontSize="8" fontWeight="900" fill="#5C3D00" fontFamily="Arial">1 YEAR</text>
+              <text x="45" y="33" textAnchor="middle" fontSize="8" fontWeight="900" fill="#5C3D00" fontFamily="Arial">{(invoice as any).warranty_years || '1'} YEAR</text>
               <text x="45" y="43" textAnchor="middle" fontSize="9" fontWeight="900" fill="#5C3D00" fontFamily="Arial">WARRANTY</text>
               <line x1="28" y1="47" x2="62" y2="47" stroke="#5C3D00" strokeWidth="0.8"/>
               <text x="45" y="55" textAnchor="middle" fontSize="6.5" fontWeight="800" fill="#5C3D00" fontFamily="Arial">SMART LIVING</text>
@@ -167,8 +167,8 @@ export default function InvoiceDocument({ invoice, items, viewUrl, paymentQrUrl 
           </div>
         </div>
 
-        {/* Website link - stuck to bottom */}
-        <div style={{ marginTop:'auto', textAlign:'center', paddingBottom:12, paddingTop:8 }}>
+        {/* Website link - stuck to bottom, no page break */}
+        <div style={{ marginTop:'auto', textAlign:'center', paddingBottom:12, paddingTop:8, pageBreakInside:'avoid', breakInside:'avoid', pageBreakBefore:'avoid', breakBefore:'avoid' }}>
           <a href="https://www.smartlivingpakistan.com" target="_blank" rel="noopener noreferrer"
             style={{ fontSize:11, color:'#1A2A7A', fontWeight:600, textDecoration:'underline' }}>
             www.Smartlivingpakistan.com

@@ -81,6 +81,7 @@ export async function POST(req: NextRequest) {
 
         notes:             body.notes || null,
         sale_person:       body.sale_person || null,
+        warranty_years:    body.warranty_years || '1',
         warehouse_address: body.warehouse_address || null,
         shipper_name:      body.shipper_name || null,
         shipper_phone:     body.shipper_phone || null,

@@ -51,6 +51,7 @@ export default function NewInvoicePage() {
 
   const [notes, setNotes] = useState('')
   const [salePerson, setSalePerson] = useState('')
+  const [warrantyYears, setWarrantyYears] = useState('1')
 
   useEffect(() => {
     ;(async () => {
@@ -349,10 +350,21 @@ export default function NewInvoicePage() {
         </Card>
 
         {/* ── NOTES ── */}
-        <Card title="Sale Person">
-          <Field label="Sale Person Name">
-            <input className={inp} style={{color:"#111827",background:"#fff",WebkitTextFillColor:"#111827"}} value={salePerson} onChange={e => setSalePerson(e.target.value)} placeholder="e.g. Sohail" />
-          </Field>
+        <Card title="Warranty & Sale Person">
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+            <Field label="Warranty Duration">
+              <select className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={warrantyYears} onChange={e => setWarrantyYears(e.target.value)}>
+                <option value="1">1 Year Warranty</option>
+                <option value="2">2 Year Warranty</option>
+                <option value="3">3 Year Warranty</option>
+                <option value="5">5 Year Warranty</option>
+                <option value="Lifetime">Lifetime Warranty</option>
+              </select>
+            </Field>
+            <Field label="Sale Person Name">
+              <input className={inp} style={{color:'#111827',background:'#fff',WebkitTextFillColor:'#111827'}} value={salePerson} onChange={e => setSalePerson(e.target.value)} placeholder="e.g. Sohail" />
+            </Field>
+          </div>
         </Card>
 
         <Card title="Notes / Terms & Conditions">
