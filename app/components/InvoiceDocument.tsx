@@ -46,17 +46,17 @@ export default function InvoiceDocument({ invoice, items, viewUrl, paymentQrUrl 
           </div>
         </div>
 
-        {/* ── CUSTOMER (left) + SHIPPER (right, indented) ── */}
-        <div style={{ display:'flex', gap:24, marginBottom:24 }}>
+        {/* ── CUSTOMER (left) + SHIPPER (right edge) ── */}
+        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:24 }}>
           {/* LEFT: Customer Details */}
-          <div style={{ flex:1 }}>
+          <div style={{ width:'45%' }}>
             <div style={{ fontSize:13, fontWeight:800, marginBottom:8, letterSpacing:'0.3px' }}>CUSTOMER DETAILS</div>
             <DetailRow label="Name" value={invoice.customer_name || '—'}/>
             <DetailRow label="Phone Number" value={invoice.customer_phone || '—'}/>
             <DetailRow label="Address" value={invoice.billing_address || invoice.shipping_address || '—'}/>
           </div>
-          {/* RIGHT: Shipper Details */}
-          <div style={{ flex:1, paddingLeft:24, borderLeft:'1px solid #F0EEE8' }}>
+          {/* RIGHT: Shipper Details - right edge */}
+          <div style={{ width:'45%', textAlign:'left' }}>
             <div style={{ fontSize:13, fontWeight:800, marginBottom:8, letterSpacing:'0.3px' }}>SHIPPER DETAILS</div>
             <DetailRow label="Name" value={invoice.shipper_name || 'Smart Living Pvt LTD.'}/>
             <DetailRow label="Phone Number" value={invoice.shipper_phone || '+92 305 7015615'}/>
